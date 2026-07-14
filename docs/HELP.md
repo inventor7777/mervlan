@@ -632,7 +632,7 @@ These commands are useful when working over SSH on the main router. Most users s
 | `sh functions/update_mervlan.sh restore`    | Open the restore flow and select one of the local MerVLAN backups.            |
 
 > [!NOTE]
-> Updates preserve settings, SSH keys, MAC shield databases, and local backups where possible. After updating, the script refreshes the public web UI files and reapplies service hooks.
+> Updates preserve your settings, SSH keys, MAC Shield databases, and local backups whenever possible. After updating, MerVLAN refreshes the public web UI files and reapplies the required service hooks. Refresh your browser after the update to load the latest web interface.
 
 ### Install, Reinstall, and Uninstall
 
@@ -711,7 +711,7 @@ These commands are useful when working over SSH on the main router. Most users s
 
 MerVLAN includes built-in hardware profiles for a growing range of Asuswrt-Merlin routers. Each profile maps physical LAN ports to the correct kernel interfaces (ethX) and identifies the WAN port.
 
-### Fully Supported Devices
+### Supported Devices
 
 | Model          | LAN Ports  | Notes                                                         |
 | -------------- | ---------- | ------------------------------------------------------------- |
@@ -733,12 +733,12 @@ MerVLAN includes built-in hardware profiles for a growing range of Asuswrt-Merli
 | RT-AXE95Q      | 3          |                                                               |
 | RT-ET8         | 3          |                                                               |
 | XT12           | 3          |                                                               |
-| RT-BE92U       | 1 (shared) | LAN 1-4 share one VLAN bridge - no per-port isolation |
+| RT-BE92U*      | 1 (shared) | LAN 1-4 share one VLAN bridge - no per-port isolation |
 
 These devices are auto-detected on startup - no manual configuration needed. More profiles are added with each release.
 
 > [!WARNING]
-> **RT-BE92U hardware limitation**
+> *RT-BE92U hardware limitation**
 >
 > Due to the internal switch design on this model, all four physical LAN ports share a single VLAN-capable interface. Only one VLAN ID can be assigned and it applies to LAN 1-4 as a group. Per-port VLAN isolation is not supported on this model.
 
