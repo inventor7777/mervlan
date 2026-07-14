@@ -318,13 +318,17 @@ Special thanks to everyone who contributed mappings.
 | RT‑AX92U      | franzatkiermeyereu      | Github  | v0.52.96         |
 | RT‑AX95Q      | mdraco11                | Github  | v0.52.93         |
 | RT‑AX5400     | tooty-1135              | Github  | v0.52.96         |
+| RT-BE88U**    | getBoolean              | Github  | v0.53.14         |
 | RT‑BE92U**    | brzd                    | SNB     | v0.52.92         |
 | TUF‑AX3000_V2 | piratak                 | Github  | v0.52.96         |
+| GT‑AX11000    | kashif789us             | Github  | v0.53.14         |
 | GT‑AX11000_PRO| bigadron                | Github  | v0.53.10         |
+| GT-AXE16000   | ika                     | SNB     | v0.53.14         |
 | XT12          | MathNerd28              | Github  | v0.53.12         |
 
 **RT‑AX88U:** LAN1–LAN4 map individually; LAN5–LAN8 are grouped as LAN5 for tagging.
 **RT‑BE92U:** LAN1–LAN4 share one VLAN bridge — no per-port isolation.
+**RT-BE88U**  This assumes the 10G WAN/LAN port is used for WAN and the 2.5 WAN/LAN1 is used for LAN (open an issue on Github is you are using another configuration and we can work out a fix)
 
 ### Manual template (if you already know the mapping)
 
