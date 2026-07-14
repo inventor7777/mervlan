@@ -713,27 +713,30 @@ MerVLAN includes built-in hardware profiles for a growing range of Asuswrt-Merli
 
 ### Supported Devices
 
-| Model          | LAN Ports  | Notes                                                         |
-| -------------- | ---------- | ------------------------------------------------------------- |
-| GT-AX11000 Pro | 5          |                                                               |
-| GT-AX6000      | 5          |                                                               |
-| RT-AX86U       | 5          |                                                               |
-| RT-AX86U Pro   | 5          |                                                               |
-| RT-AX88U       | 5          |                                                               |
-| RT-AX88U Pro   | 5          |                                                               |
-| RT-AX56U       | 4          |                                                               |
-| RT-AX58U       | 4          |                                                               |
-| RT-AX82U       | 4          |                                                               |
-| RT-AX86S       | 4          |                                                               |
-| RT-AX92U       | 4          |                                                               |
-| RT-AC86U       | 4          |                                                               |
-| RT-AX5400      | 4          |                                                               |
-| TUF-AX3000_V2  | 4          |                                                               |
-| RT-AX95Q       | 3          |                                                               |
-| RT-AXE95Q      | 3          |                                                               |
-| RT-ET8         | 3          |                                                               |
-| XT12           | 3          |                                                               |
-| RT-BE92U*      | 1 (shared) | LAN 1-4 share one VLAN bridge - no per-port isolation |
+| Model          | Ports  | Notes                                                                  |
+| -------------- | ---------- | ---------------------------------------------------------------------- |
+| GT-AX11000     | 4          |                                                                        |
+| GT-AX11000 Pro | 5          |                                                                        |
+| GT-AX6000      | 5          |                                                                        |
+| GT-AXE16000    | 6          |                                                                        |
+| RT-AC86U       | 4          |                                                                        |
+| RT-AX5400      | 4          |                                                                        |
+| RT-AX56U       | 4          |                                                                        |
+| RT-AX58U       | 4          |                                                                        |
+| RT-AX82U       | 4          |                                                                        |
+| RT-AX86S       | 4          |                                                                        |
+| RT-AX86U       | 5          |                                                                        |
+| RT-AX86U Pro   | 5          |                                                                        |
+| RT-AX88U*      | 5          | LAN1–LAN4 map individually; LAN5–LAN8 are grouped as LAN5 for tagging |
+| RT-AX88U Pro   | 5          |                                                                        |
+| RT-AX92U       | 4          |                                                                        |
+| RT-AX95Q       | 3          |                                                                        |
+| RT-AXE95Q      | 3          |                                                                        |
+| RT-BE88U       | 8          |                                                                        |
+| RT-BE92U*      | 1          | LAN1–LAN4 share one VLAN bridge — no per-port isolation                |
+| RT-ET8         | 3          |                                                                        |
+| TUF-AX3000_V2  | 4          |                                                                        |
+| XT12           | 3          |                                                                        |
 
 These devices are auto-detected on startup - no manual configuration needed. More profiles are added with each release.
 
@@ -741,6 +744,11 @@ These devices are auto-detected on startup - no manual configuration needed. Mor
 > *RT-BE92U hardware limitation**
 >
 > Due to the internal switch design on this model, all four physical LAN ports share a single VLAN-capable interface. Only one VLAN ID can be assigned and it applies to LAN 1-4 as a group. Per-port VLAN isolation is not supported on this model.
+
+> [!WARNING]
+> *RT-AX88U hardware limitation**
+>
+> Due to the internal switch design on this model, LAN port 5-8 share a single VLAN-capable interface. 
 
 ### If Your Device Is Not Listed
 
