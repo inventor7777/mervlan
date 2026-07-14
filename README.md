@@ -15,10 +15,32 @@ The addon installs under the normal Merlin web interface (LAN section) and handl
 
 > New here or looking for setup details? Read the full [MerVLAN Help Guide](docs/HELP.md) for topology examples, requirements, supported devices, troubleshooting, and mapper instructions.
 
+> The full help & guide documentation (docs/HELP.md) is available offline from within the MerVLAN UI. Just press the "INFO" button then the "Help" button.
+
+<a id="index"></a>
+
+## Index
+
+1. [Status / Beta Notes](#status-beta-notes)
+2. [What MerVLAN Actually Does](#what-mervlan-actually-does)
+3. [Key Features](#key-features)
+4. [Requirements](#requirements)
+5. [Limitations](#limitations)
+6. [Install](#install)
+7. [Uninstall](#uninstall)
+8. [Update](#update)
+9. [Logs & Debugging](#logs-debugging)
+10. [Development / Testing Notes](#development-testing-notes)
+11. [Changelog](#changelog)
+12. [Help wanted: LAN/ETH port mapping (device support)](#help-wanted)
+13. [Community Contributors](#community-contributors)
+14. [License](#license)
+
 ---
 
-## Status / Beta Notes
+<h2 id="status-beta-notes">Status / Beta Notes</h2>
 
+- **[View the complete list of supported devices](docs/HELP.md#8-device-support)**
 - **Status:** Public beta – expect bugs and breaking changes.
 - **Mode:** **AP‑mode only** (main and nodes must be running as APs, not routers).
 - If you hit issues, collect logs and share them (Discord/SNB/PM):
@@ -29,7 +51,7 @@ The addon installs under the normal Merlin web interface (LAN section) and handl
 
 ---
 
-## What MerVLAN Actually Does
+<h2 id="what-mervlan-actually-does">What MerVLAN Actually Does <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 High level:
 
@@ -49,7 +71,7 @@ This gives you a repeatable, UI‑driven way to deploy and maintain VLANs on Asu
 
 ---
 
-## Key Features
+<h2 id="key-features">Key Features <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 **UI‑driven VLAN management**
 
@@ -91,7 +113,7 @@ This gives you a repeatable, UI‑driven way to deploy and maintain VLANs on Asu
 
 ---
 
-## Requirements
+<h2 id="requirements">Requirements <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 - **Asuswrt‑Merlin firmware** with addon support on every device that will tag VLANs.
 - **AP‑mode only** on all participating routers/APs.
@@ -117,7 +139,7 @@ SSH key behavior:
 
 ---
 
-## Limitations
+<h2 id="limitations">Limitations <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 - Maximum number of VLANs is effectively bounded by the number of SSID slots on your hardware (e.g., if the AP supports 5 SSIDs, you can’t have 12 actively used VLANs mapped to SSIDs).
 - Mesh behavior is constrained by Asus firmware:
@@ -128,7 +150,7 @@ SSH key behavior:
 
 ---
 
-## Install
+<h2 id="install">Install <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 Only install if you are comfortable with **beta software** and have a way to recover (including factory reset) if something goes wrong.
 
@@ -164,7 +186,7 @@ If the web UI ever looks out of sync or partially broken after manual file chang
 
 ---
 
-## Uninstall
+<h2 id="uninstall">Uninstall <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 From `/jffs/addons/mervlan` on the AP:
 
@@ -184,31 +206,41 @@ From `/jffs/addons/mervlan` on the AP:
 
 ---
 
-## Update
+<h2 id="update">Update <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
-You can update the addon in‑place while preserving your settings and SSH keys.
+> [!NOTE]
+> Updates preserve your settings, SSH keys, MAC Shield databases, and local backups whenever possible. After updating, MerVLAN refreshes the public web UI files and reapplies the required service hooks. Refresh your browser after the update to load the latest web interface.
 
-On the main AP, run:
+You can update MerVLAN in place without losing your configuration or SSH keys.
 
-```sh
-/jffs/addons/mervlan/functions/update_mervlan.sh
-```
+The recommended method is through the web UI. Click the version button in the bottom-right corner, choose the branch you want to use, check for updates, and install the latest version. The web UI supports switching between the stable and development branches as long as the selected version is newer than the one currently installed. Downgrading from the web UI is not currently supported, but can be done manually over SSH.
+
+### Manual Update Commands
+
+| Command                                  | What it does                                                                               |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `sh functions/update_mervlan.sh`         | Updates to the latest stable (main) release.                                               |
+| `sh functions/update_mervlan.sh dev`     | Updates to the latest development release.                                                 |
+| `sh functions/update_mervlan.sh restore` | Opens the restore menu, allowing you to restore a previously created local MerVLAN backup. |
+
+The manual updater supports **cross-updating** between the stable and development branches at any time. If an update doesn't behave as expected, or if your configuration becomes corrupted, you can use the built-in restore function to roll back to one of your locally stored MerVLAN backups.
 
 The updater will:
 
-- Download the latest snapshot from GitHub.
-- Validate required files and directories.
-- Stage the new version, copy over `settings/settings.json` and SSH keys, and swap atomically.
-- Re‑run the hardware probe and resync files to nodes (when SSH keys and nodes are configured).
-- Refresh the public web copy and reinstall hooks.
+* Download the latest version from GitHub.
+* Validate the required files and directories.
+* Stage the new version, preserve `settings/settings.json` and your SSH keys, then perform an atomic replacement.
+* Re-run the hardware probe and automatically synchronize configured remote nodes when SSH is enabled.
+* Refresh the public web files and reinstall the required service hooks.
 
-Node/remote APs that are configured and reachable over SSH will also be synced automatically.
+Configured remote APs that are reachable over SSH are automatically synchronized as part of the update process.
 
-Updating the addon directly from the GUI (without SSH) is planned and under active development.
+Updating directly from the web UI is the recommended method, as it is generally the simplest and most convenient way to keep MerVLAN up to date.
+
 
 ---
 
-## Logs & Debugging
+<h2 id="logs-debugging">Logs & Debugging <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 Primary log directory:
 
@@ -237,7 +269,7 @@ Log formatting, colors, and syslog tagging are configurable in:
 
 ---
 
-## Development / Testing Notes
+<h2 id="development-testing-notes">Development / Testing Notes <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 - Developed on an **ASUS XT8** mesh system in AP‑mode.
 - Intended to work with most newer Asuswrt‑Merlin / Gnuton‑supported routers and mesh AP systems when used as APs.
@@ -250,13 +282,13 @@ For structured beta testing and discussion, see the SNBForums thread and Discord
 
 ---
 
-## Changelog
+<h2 id="changelog">Changelog <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
-See `changelog.txt` in this repository for detailed version history and notes.
+See the **[`changelog.txt`](changelog.txt)** in this repository for detailed version history and notes.
 
 ---
 
-## Help wanted: LAN/ETH port mapping (device support)
+<h2 id="help-wanted">Help wanted: LAN/ETH port mapping (device support) <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 To add official support for more routers, we need accurate LAN port mapping (LAN1 → LANX → ethX). The helper script below walks you through mapping and creates everything needed for upstream support.
 
@@ -298,37 +330,6 @@ mkdir -p /tmp/mervlan_tmp && /usr/sbin/curl -fsL --retry 3 "https://raw.githubus
 - Local patching is a stopgap; please submit the report for official support.
 - Primary testing target is AP mode, but router‑mode validation is helpful too.
 
-### Community‑added model support
-
-Special thanks to everyone who contributed mappings.
-
-| Model         | Contributor             | From    | Added in version |
-| ------------- | ----------------------- | ------- | ---------------- |
-| RT‑AC86U      | mistermoonlight1        | SNB     | v0.52.3          |
-| RT‑AX86U      | mistermoonlight1        | SNB     | v0.52.4          |
-| GT‑AX6000     | kstamand                | SNB     | v0.52.4          |
-| RT‑AX86S      | bieniu                  | Github  | v0.52.3          |
-| RT‑AX58U      | commodoro               | SNB     | v0.52.4          |
-| RT‑AX82U      | pxdl                    | Github  | v0.52.93         |
-| RT‑AX86U_PRO  | davittoncat             | Github  | v0.52.94         |
-| RT‑AX88U**    | amplatfus               | SNB     | v0.52.4          |
-| RT‑AX88U_PRO  | jksmurf                 | SNB     | v0.52.4          |
-| RT‑AX92U      | RikshaDriver            | Github  | v0.52.94         |
-| RT‑AX92U      | Mudcrab353              | Github  | v0.52.96         |
-| RT‑AX92U      | franzatkiermeyereu      | Github  | v0.52.96         |
-| RT‑AX95Q      | mdraco11                | Github  | v0.52.93         |
-| RT‑AX5400     | tooty-1135              | Github  | v0.52.96         |
-| RT-BE88U**    | getBoolean              | Github  | v0.53.14         |
-| RT‑BE92U**    | brzd                    | SNB     | v0.52.92         |
-| TUF‑AX3000_V2 | piratak                 | Github  | v0.52.96         |
-| GT‑AX11000    | kashif789us             | Github  | v0.53.14         |
-| GT‑AX11000_PRO| bigadron                | Github  | v0.53.10         |
-| GT-AXE16000   | ika                     | SNB     | v0.53.14         |
-| XT12          | MathNerd28              | Github  | v0.53.12         |
-
-**RT‑AX88U:** LAN1–LAN4 map individually; LAN5–LAN8 are grouped as LAN5 for tagging.
-**RT‑BE92U:** LAN1–LAN4 share one VLAN bridge — no per-port isolation.
-**RT-BE88U**  This assumes the 10G WAN/LAN port is used for WAN and the 2.5 WAN/LAN1 is used for LAN (open an issue on Github is you are using another configuration and we can work out a fix)
 
 ### Manual template (if you already know the mapping)
 
@@ -391,6 +392,25 @@ Models added to the support table are excluded from this list. Any help testing 
 
 ---
 
-## License
+<h2 id="community-contributors">Community Contributors ⭐ <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
+
+MerVLAN wouldn't support as many devices as it does today without the community members who took the time to run the hardware mapper on their own routers and submit their device mappings. Every submission helps expand compatibility, improve detection, and make MerVLAN available to more users. Thank you to everyone who contributed!
+
+**Model collection from GitHub:**
+
+bieniu, pxdl, davittoncat, RikshaDriver, Mudcrab353, franzatkiermeyereu, mdraco11, tooty-1135, getBoolean, piratak, kashif789us, bigadron, MathNerd28
+
+**Model collection from SNBForums:**
+
+mistermoonlight1, kstamand, commodoro, amplatfus, jksmurf, brzd, ika
+
+---
+
+**Extra Special Thanks** to **agnithin** and **inventor7777**. Thank you for jumping in, contributing code, sharing ideas, and helping improve MerVLAN for everyone. Open-source projects thrive because people like you choose to spend your time helping others, and I genuinely appreciate everything you've done for this project.
+
+
+---
+
+<h2 id="license">License <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 See `LICENSE` for full license details.
