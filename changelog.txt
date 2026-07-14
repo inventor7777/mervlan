@@ -1,3 +1,70 @@
+mervlan v0.53.14
+
+Big thanks to @inventor7777 on GitHub for diagnosing, fixing, and live-testing
+this release on a real four-node XT8 setup. Your contribution is very much appreciated!
+
+Fixed: sync only populated NODE1 — nodes 2+ were silently skipped (issue #31)
+- Node-processing loops in sync_nodes.sh and execute_nodes.sh shared their stdin
+  with the dbclient SSH calls inside the loop. dbclient consumed the remaining
+  node list on the first iteration, so only NODE1 was ever processed.
+- Replaced the stdin-driven while-read loops with index-based iteration that reads
+  node entries from a temp file using sed. The loop body no longer touches stdin.
+
+Fixed: SSH failures reported as "unknown reason" / "fetch-failed"
+- merv_ssh_exec ran inside $() subshells in several callers, which prevented
+  MERV_SSH_LAST_REASON from propagating back to the parent shell.
+- collect_clients.sh and merv_ssh_test now run merv_ssh_exec in the current shell
+  context so the real failure reason (auth-failed, refused, timeout, etc.) is
+  always surfaced in the log.
+
+Fixed: missing node-side files misclassified as generic SSH failures
+- Remote command exit codes 126/127 (command not found / permission denied on the
+  node side) are now classified as remote-cmd-failed and abort the retry loop
+  immediately, since retrying will not help and the real cause is that Sync Nodes
+  has not been run yet.
+
+Fixed: merv_ssh_test masked SSH exit code
+- The old pipe (merv_ssh_exec | grep) let grep's exit code override the SSH result.
+  merv_ssh_test now captures output in a variable, checks the SSH exit code first,
+  then validates the response.
+
+lib_ssh.sh
+- Added </dev/null to all dbclient invocations in merv_ssh_exec so the SSH client
+  never inherits or reads from the calling loop's stdin.
+- Added remote-cmd-failed reason code for rc=126/127.
+- Fixed merv_ssh_test to check SSH exit code before grepping output.
+
+sync_nodes.sh
+- Replaced while-read/heredoc loop with index-based sed iteration over a temp file.
+
+execute_nodes.sh
+- Same loop fix applied to all four node iteration phases (prepare, launch, verify,
+  cleanup).
+
+collect_clients.sh
+- collect_from_node now runs merv_ssh_exec directly (not in a subshell) so
+  MERV_SSH_LAST_REASON is preserved and logged correctly on failure.
+
+docs/HELP.md
+- Added a note that static IP addresses are mandatory for all APs/nodes. MerVLAN
+  uses SSH to sync and apply configuration; a DHCP address that changes will break
+  connectivity to the node.
+
+Added support for following models:
+- GT-AX11000
+- GT-AXE16000
+- RT-BE88U**
+- RT-AX86U|RT-AX86S***
+** This assumes the 10G WAN/LAN port is used for WAN and the 2.5 WAN/LAN1 is used 
+   for LAN (open an issue on Github is you are using another configuration and we can work out a fix)
+*** Added `odmpid`-based variant detection and automatic selection of the correct Ethernet port map.
+    This combines the RT-AX86S and RT-AX86U profiles and prevents the RT-AX86S from being
+    detected as an RT-AX86U when both models report the same `productid`.
+
+
+
+################ END OF CURRENT CHANGELOG
+
 mervlan v0.53.13
 
 Release note
