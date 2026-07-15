@@ -1,3 +1,25 @@
+mervlan v0.53.15
+
+Fixed: RT-AX86S name badge showing "RT-AX86U" in the UI (hw_probe.sh)
+- hw_probe.sh wrote the raw nvram `productid` value as PRODUCTID in settings.json.
+  Fix: after the model detection case block resolves MODEL (including the odmpid-based
+  RT-AX86U/RT-AX86S disambiguation), PRODUCTID is now overwritten with the resolved
+  MODEL value before being written to settings.json. The badge will show the correct
+  device identity after the next hardware probe run.
+
+Fixed: trunk port using wrong ethernet interface (eth1 instead of eth4 for LAN 1) (mervlan_trunk.sh)
+- get_trunk_port() resolved the physical interface with printf 'eth%s' "$idx", directly
+  concatenating "eth" with the LAN slot index. This works by coincidence on routers
+  where LAN N = ethN, but fails on the RT-AX86S where ETH_PORTS="eth4 eth3 eth2 eth1"
+  (LAN1=eth4, LAN2=eth3, ...). Setting LAN 1 as trunk always produced eth1 regardless
+  of the hardware profile.
+- Fix: added _hw_eth_for_slot() helper that picks the Nth entry from a space-separated
+  list. get_trunk_port() now reads ETH_PORTS from the Hardware section of settings.json
+  and uses _hw_eth_for_slot to resolve the correct physical interface for the given LAN
+  slot. Falls back to eth<idx> only when the hardware profile is unavailable.
+
+################ END OF CURRENT CHANGELOG
+
 mervlan v0.53.14
 
 Big thanks to @inventor7777 on GitHub for diagnosing, fixing, and live-testing
@@ -60,8 +82,6 @@ Added support for following models:
 *** Added `odmpid`-based variant detection and automatic selection of the correct Ethernet port map.
     This combines the RT-AX86S and RT-AX86U profiles and prevents the RT-AX86S from being
     detected as an RT-AX86U when both models report the same `productid`.
-
-
 
 ################ END OF CURRENT CHANGELOG
 
