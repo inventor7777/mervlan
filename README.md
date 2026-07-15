@@ -11,11 +11,14 @@ It is designed for AP‑mode deployments and lets you:
 
 The addon installs under the normal Merlin web interface (LAN section) and handles the low‑level bridge/VLAN wiring for you.
 
-> **MerVLAN is not a router or managed switch.** It tags and bridges traffic at the AP; you still need a VLAN‑aware upstream switch/firewall for routing, DHCP, and policy.
+> [!WARNING]
+> **MerVLAN is not a router or managed switch.** It tags and bridges traffic at the AP; you still need a VLAN-aware upstream switch/firewall for routing, DHCP, and policy.
 
-> New here or looking for setup details? Read the full [MerVLAN Help Guide](docs/HELP.md) for topology examples, requirements, supported devices, troubleshooting, and mapper instructions.
+> [!TIP]
+> New here or looking for setup details? Read the full [MerVLAN Help Guide](docs/HELP.md) for topology examples, requirements, supported devices, troubleshooting, and mapper instructions.  
+> The full help guide is also available offline from within the MerVLAN UI. Click **INFO** → **Help**.
 
-> The full help & guide documentation (docs/HELP.md) is available offline from within the MerVLAN UI. Just press the "INFO" button then the "Help" button.
+---
 
 <a id="index"></a>
 
