@@ -12,7 +12,7 @@
 #  |__/     |__/ \_______/|__/          \_/    |________/|__/  |__/|__/  \__/  #
 #                                                                              #
 # ============================================================================ #
-#                   - File: hw_probe.sh || version="0.56"                      #
+#                   - File: hw_probe.sh || version="0.57"                      #
 # ============================================================================ #
 # - Purpose:  Probe system hardware and record hardware keys in the central    #
 #             settings store (settings.json). Writes non-destructively via     #
@@ -361,6 +361,11 @@ ensure_json_store "$HW_TARGET" || {
 
 # Scalars -> stored as strings for compatibility
 json_set_flag "MODEL" "$MODEL" "$HW_TARGET" || warn "Failed to write MODEL"
+# Overwrite the raw nvram PRODUCTID with the resolved MODEL name so the UI
+# badge always shows the correct device identity. On hardware where the nvram
+# productid differs from the true model (e.g. RT-AX86S reporting as RT-AX86U),
+# the badge would otherwise display the wrong name.
+PRODUCTID="$MODEL"
 json_set_flag "PRODUCTID" "$PRODUCTID" "$HW_TARGET" || warn "Failed to write PRODUCTID"
 json_set_flag "MAX_SSIDS" "${MAX_SSIDS}" "$HW_TARGET" || warn "Failed to write MAX_SSIDS"
 json_set_flag "GUEST_SLOTS" "${GUEST_SLOTS}" "$HW_TARGET" || warn "Failed to write GUEST_SLOTS"
