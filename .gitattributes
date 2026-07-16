@@ -1,0 +1,10 @@
+# Handle line endings automatically for all text files and force them to LF
+* text=auto eol=lf
+
+# Explicitly mark image and binary assets so Git leaves them completely untouched
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text eol=lf

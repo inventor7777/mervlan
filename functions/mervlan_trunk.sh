@@ -11,7 +11,7 @@
 #  |__/     |__/ \_______/|__/          \_/    |________/|__/  |__/|__/  \__/  #
 #                                                                              #
 # ============================================================================ #
-#               - File: mervlan_trunk.sh || version="0.56"                     #
+#               - File: mervlan_trunk.sh || version="0.57"                     #
 # ============================================================================ #
 # =========================================== MerVLAN environment bootstrap == #
 : "${MERV_BASE:=/jffs/addons/mervlan}"
@@ -476,8 +476,21 @@ parse_vlan_list() {
   done
 }
 
+# _hw_eth_for_slot — resolve the physical ethernet interface for LAN slot N
+# Args: $1=1-based LAN slot index, $2=space-separated ETH_PORTS list
+# Stdout: interface name (e.g. eth4); returns 1 if slot out of range
+_hw_eth_for_slot() {
+  local slot="$1" _n=1 _p
+  shift
+  for _p in $@; do
+    [ "$_n" -eq "$slot" ] && { printf '%s\n' "$_p"; return 0; }
+    _n=$((_n + 1))
+  done
+  return 1
+}
+
 get_trunk_port() {
-  local idx="$1" raw num
+  local idx="$1" raw num _eth_ports _port
 
   # Read TRUNKx as integer. -1 means "missing".
   raw="$(json_get_int "TRUNK${idx}" -1 "$SETTINGS_FILE" 2>/dev/null)"
@@ -520,7 +533,20 @@ get_trunk_port() {
       return 1
       ;;
     1)
-      dbg_log "trunk${idx}: value=1, interpreted as enabled on eth${idx}"
+      # Value=1 means "trunk enabled on LAN slot idx".
+      # Resolve the physical interface from the hardware ETH_PORTS map so
+      # routers where LAN slot N != ethN (e.g. RT-AX86S: LAN1=eth4) work
+      # correctly.  Fall back to eth<idx> only when the profile is absent.
+      _eth_ports="$(json_get_section_array "Hardware" "ETH_PORTS" "$SETTINGS_FILE" 2>/dev/null)"
+      [ -z "$_eth_ports" ] && \
+        _eth_ports="$(json_get_array "ETH_PORTS" "$SETTINGS_FILE" 2>/dev/null)"
+      _port="$(_hw_eth_for_slot "$idx" $_eth_ports)"
+      if [ -n "$_port" ]; then
+        dbg_log "trunk${idx}: value=1, resolved LAN${idx} → ${_port} via ETH_PORTS"
+        printf '%s\n' "$_port"
+        return 0
+      fi
+      dbg_log "trunk${idx}: value=1, ETH_PORTS unavailable, falling back to eth${idx}"
       printf 'eth%s\n' "$idx"
       return 0
       ;;
