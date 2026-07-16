@@ -12,10 +12,11 @@ MerVLAN is a VLAN management addon for Asuswrt-Merlin. This guide covers setup, 
 4. [Applying Your Configuration](#4-applying-your-configuration)
 5. [SSH Key Install](#5-ssh-key-install)
 6. [Logs & Monitoring](#6-logs--monitoring)
-7. [CLI Usage](#7-cli-usage)
-8. [Device Support](#8-device-support)
-9. [Get Help & Support](#9-get-help--support)
-10. [Wiki - Reference & Glossary](#10-wiki---reference--glossary)
+7. [Updating MerVLAN](#updating-mervlan)
+8. [CLI Usage](#7-cli-usage)
+9. [Device Support](#8-device-support)
+10. [Get Help & Support](#9-get-help--support)
+11. [Wiki - Reference & Glossary](#10-wiki---reference--glossary)
 
 <h2 id="1-getting-started-with-mervlan">1. Getting Started With MerVLAN</h2>
 
@@ -613,7 +614,78 @@ NODE2 (192.168.1.51):  br30
 <br>
 <br>
 
-<h2 id="7-cli-usage">7. CLI Usage <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
+<h2 id="updating-mervlan">7. Updating MerVLAN <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
+
+> [!NOTE]
+> Updates preserve your settings, SSH keys, MAC Shield databases, and local backups whenever possible. After updating, MerVLAN refreshes the public web UI files and reapplies the required service hooks. Refresh your browser after the update to load the latest web interface.
+
+MerVLAN can be updated in place without losing its existing configuration or SSH credentials.
+
+The recommended method is through the web UI. Click the version button in the bottom-right corner, select the branch you want to use, check for updates, and install the available version.
+
+MerVLAN uses the following update channels:
+
+- **`main`** is the recommended public beta and release branch.
+  - Normal installations and updates use this branch.
+  - Tagged GitHub pre-releases are created from tested commits on `main`.
+  - GitHub release assets are not currently used by the installer; updates continue to download directly from the branch.
+
+- **`dev`** is the active development and integration branch.
+  - It may contain unfinished, experimental, or less-tested changes.
+  - It does not receive tagged GitHub releases.
+  - It is intended for development installations and testing upcoming changes.
+
+Temporary test branches, normally named using the `dev-test<number>` format, may also be used during active development. These branches can contain incomplete or untested code and should only be used when directly involved in testing or when requested by the maintainer.
+
+> [!WARNING]
+> MerVLAN is currently in public beta. The `main` branch is the recommended channel, but bugs and breaking changes are still possible. The `dev` and temporary test branches carry a higher risk of incomplete or unstable behaviour.
+
+### Updating through the web UI
+
+The web UI supports switching between `main` and `dev` when the selected branch contains a version newer than the one currently installed.
+
+Downgrading or installing an older version through the web UI is not currently supported. To move to an older branch version or restore a previous local backup, use the manual updater over SSH.
+
+### Manual Update Commands
+
+| Command | What it does |
+| --- | --- |
+| <pre>`sh functions/update_mervlan.sh`</pre> | Update MerVLAN to the latest version available on the `main` public beta channel. |
+| <pre>`sh functions/update_mervlan.sh dev`</pre> | Update MerVLAN to the latest version available on the `dev` development channel. |
+| <pre>`sh functions/update_mervlan.sh update dev`</pre> | Explicitly run a development-channel update. This performs the same type of update as selecting `dev` through the web UI. |
+| <pre>`sh functions/update_mervlan.sh restore`</pre> | Open the restore menu and restore a previously created local MerVLAN backup. |
+| <pre>`sh functions/update_mervlan.sh BRANCH`</pre> | Replace `BRANCH` with the name of a custom development or test branch.<br>For example, run `sh functions/update_mervlan.sh dev-test9` to update MerVLAN from the `dev-test9` branch. |
+
+The manual updater supports cross-updating between `main`, `dev`, and custom branches. This allows development installations to move between channels even when the target version is not newer than the currently installed version.
+
+> [!CAUTION]
+> Custom branches are not permanent release channels. A temporary branch may be changed or removed without notice. Before moving to one, make sure you know its purpose and have a usable local backup.
+
+### Update Process
+
+During an update, the updater will:
+
+- Download the selected branch from GitHub.
+- Validate the required files and directories.
+- Stage the new version before replacing the installed files.
+- Preserve `settings/settings.json`, SSH keys, MAC Shield databases, and local backups whenever possible.
+- Perform an atomic replacement of the installed version.
+- Re-run the hardware probe.
+- Refresh the public web UI files.
+- Reinstall the required service hooks.
+- Automatically synchronize configured remote nodes when SSH is enabled and the nodes are reachable.
+
+If an update does not behave as expected, or the configuration becomes corrupted, use the built-in restore function to return to one of the locally stored MerVLAN backups.
+
+Configured remote APs that are reachable over SSH are automatically synchronized as part of the normal update process.
+
+Updating through the web UI remains the recommended method for normal use. Manual SSH updates are mainly intended for development, branch switching, downgrading, troubleshooting, and recovery.
+
+<br>
+<br>
+<br>
+
+<h2 id="7-cli-usage">8. CLI Usage <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 These commands are useful when working over SSH on the main router. Most users should use the web UI first; CLI commands are mainly for recovery, manual updates, testing, and advanced troubleshooting.
 
@@ -708,7 +780,7 @@ These commands are useful when working over SSH on the main router. Most users s
 <br>
 <br>
 
-<h2 id="8-device-support">8. Device Support <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
+<h2 id="8-device-support">9. Device Support <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 MerVLAN includes built-in hardware profiles for a growing range of Asuswrt-Merlin routers. Each profile maps physical LAN ports to the correct kernel interfaces (ethX) and identifies the WAN port.
 
@@ -797,7 +869,7 @@ See the "Get Help" tab for all links.
 <br>
 <br>
 
-<h2 id="9-get-help--support">9. Get Help & Support <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
+<h2 id="9-get-help--support">10. Get Help & Support <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 Need help? Found a bug? Have a feature idea? The MerVLAN community is active and happy to assist.
 
@@ -871,7 +943,7 @@ Happy VLANing!
 <br>
 <br>
 
-<h2 id="10-wiki---reference--glossary">10. Wiki - Reference & Glossary <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
+<h2 id="10-wiki---reference--glossary">11. Wiki - Reference & Glossary <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 Background reference for MerVLAN. Step-by-step guides are in the other tabs - this page covers what each script does, how they connect, and what technical terms mean.
 
