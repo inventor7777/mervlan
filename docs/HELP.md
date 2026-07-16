@@ -72,7 +72,8 @@ MerVLAN is a VLAN management addon for Asuswrt-Merlin. It manages VLAN bridges, 
 >
 > This is an experimental extension of topology 2 or 3. The main unit still connects upstream through its **WAN port**, but downstream APs are plugged directly into selected **LAN ports** on the main unit.  
 > Those LAN ports must be configured as 802.1Q trunk ports in MerVLAN's LAN Setup.  
-> AP-to-AP and node-to-node trunking is not supported here. Downstream APs must connect directly to the main unit.  
+> MerVLAN supports one trunk hop from the **MAIN** unit to a directly connected **NODE**.  
+> Trunking from one **NODE** to another **NODE** is not supported. Every downstream node using this topology must connect directly to the main unit.  
 > Use this only if you understand the trunk requirements and are prepared to test carefully.
 >
 > <p align="center"> <img src="diagrams/topology-4_node-to-main.svg" alt="Topology 4 - Nodes Connected Directly to Main Unit" width="100%"> </p>
@@ -382,7 +383,7 @@ Single router: no mode selection - applies immediately.
 <br>
 > [!TIP]
 > If you are configuring Nodes, please continue to the **SSH Key Install** section before applying.
-<be>
+<br>
 ### What Happens During Apply
 
 1. Hardware profile is validated.
@@ -513,7 +514,7 @@ MerVLAN provides real-time feedback and persistent logs for every operation.
 >
 > Clients attached to MerVLAN VLAN bridges will not appear correctly in the built-in ASUS client list, Network Map, or traffic/client monitoring views.
 >
-> This happens because those ASUS views mostly track clients on the default LAN bridge, `br0`. Once MerVLAN moves a client interface into a dedicated VLAN bridge such as `br20`, `br30`, or `br40`, The built-in ASUS tools no longer see that client through its normal internal collection system.
+> This happens because those ASUS views mostly track clients on the default LAN bridge, `br0`. Once MerVLAN moves a client interface into a dedicated VLAN bridge such as `br20`, `br30`, or `br40`, the built-in ASUS tools no longer see that client through its normal internal collection system.
 >
 > Use MerVLAN's Active VLANs and client/log views when checking VLAN-connected clients.
 
