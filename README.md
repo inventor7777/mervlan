@@ -36,8 +36,9 @@ The addon installs under the normal Merlin web interface (LAN section) and handl
 10. [Development / Testing Notes](#development-testing-notes)
 11. [Changelog](#changelog)
 12. [Help wanted: LAN/ETH port mapping (device support)](#help-wanted)
-13. [Community Contributors](#community-contributors)
-14. [License](#license)
+13. [Branches, Releases and Contributions](#branches-releases-and-contributions)
+14. [Community Contributors](#community-contributors)
+15. [License](#license)
 
 ---
 
@@ -214,32 +215,36 @@ From `/jffs/addons/mervlan` on the AP:
 > [!NOTE]
 > Updates preserve your settings, SSH keys, MAC Shield databases, and local backups whenever possible. After updating, MerVLAN refreshes the public web UI files and reapplies the required service hooks. Refresh your browser after the update to load the latest web interface.
 
-You can update MerVLAN in place without losing your configuration or SSH keys.
+MerVLAN can be updated in place without losing its existing configuration or SSH keys.
 
-The recommended method is through the web UI. Click the version button in the bottom-right corner, choose the branch you want to use, check for updates, and install the latest version. The web UI supports switching between the stable and development branches as long as the selected version is newer than the one currently installed. Downgrading from the web UI is not currently supported, but can be done manually over SSH.
+The recommended method is through the web UI. Click the version button in the bottom-right corner, select the branch you want to use, check for updates, and install the available version.
+
+- **`main`** is the recommended public beta and release branch.
+- **`dev`** is the active development branch and may contain less-tested changes.
+
+The web UI supports switching between `main` and `dev` when the selected branch contains a newer version. Downgrading through the web UI is not currently supported, but can be done manually over SSH.
 
 ### Manual Update Commands
 
-| Command                                  | What it does                                                                               |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `sh functions/update_mervlan.sh`         | Updates to the latest stable (main) release.                                               |
-| `sh functions/update_mervlan.sh dev`     | Updates to the latest development release.                                                 |
-| `sh functions/update_mervlan.sh restore` | Opens the restore menu, allowing you to restore a previously created local MerVLAN backup. |
+| Command | What it does |
+| --- | --- |
+| `sh functions/update_mervlan.sh` | Update to the latest version from the `main` public beta channel. |
+| `sh functions/update_mervlan.sh dev` | Update to the latest version from the `dev` development channel. |
+| `sh functions/update_mervlan.sh restore` | Open the restore menu and restore a previously created local MerVLAN backup. |
 
-The manual updater supports **cross-updating** between the stable and development branches at any time. If an update doesn't behave as expected, or if your configuration becomes corrupted, you can use the built-in restore function to roll back to one of your locally stored MerVLAN backups.
+The manual updater supports switching between the `main` and `dev` branches. If an update does not behave as expected, or the configuration becomes corrupted, the built-in restore function can return MerVLAN to one of its locally stored backups.
 
 The updater will:
 
-* Download the latest version from GitHub.
-* Validate the required files and directories.
-* Stage the new version, preserve `settings/settings.json` and your SSH keys, then perform an atomic replacement.
-* Re-run the hardware probe and automatically synchronize configured remote nodes when SSH is enabled.
-* Refresh the public web files and reinstall the required service hooks.
+- Download and validate the selected version from GitHub.
+- Stage the new files and perform an atomic replacement.
+- Preserve `settings/settings.json`, SSH keys, MAC Shield databases, and local backups whenever possible.
+- Re-run the hardware probe.
+- Refresh the public web UI files and reinstall the required service hooks.
+- Synchronize configured remote nodes when SSH is enabled and the nodes are reachable.
 
-Configured remote APs that are reachable over SSH are automatically synchronized as part of the update process.
-
-Updating directly from the web UI is the recommended method, as it is generally the simplest and most convenient way to keep MerVLAN up to date.
-
+> [!TIP]
+> For custom branches, manual downgrades, restore instructions, and additional update commands, see [Updating MerVLAN in the Help Guide](docs/HELP.md#updating-mervlan).
 
 ---
 
@@ -392,6 +397,39 @@ Standard RT‑AX series:
 - DSL‑AX5400
 
 Models added to the support table are excluded from this list. Any help testing is appreciated.
+
+---
+
+<h2 id="branches-releases-and-contributions">Branches, Releases and Contributions <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
+
+MerVLAN uses two primary branches:
+
+- **`main`** is the recommended public beta and release branch.
+  - Normal installations and updates use this branch.
+  - Tagged GitHub pre-releases are created from commits on `main`.
+  - Development changes reach `main` through controlled merges from `dev`.
+
+- **`dev`** is the active development and integration branch.
+  - It may contain unfinished, experimental, or less-tested changes.
+  - It remains available directly through GitHub but does not receive tagged releases.
+  - Development installations may use this branch to test upcoming changes.
+
+For development and testing, temporary branches may also be created from `dev`. These are normally named using the `dev-test<number>` format, such as `dev-test1` or `dev-test2`.
+
+These branches are temporary and are only intended for active development and targeted testing. Unless you are directly involved in testing a specific branch, using one is strongly discouraged unless requested by the maintainer. They may contain incomplete, experimental, or untested code and should not be considered release versions.
+
+MerVLAN can be manually updated to one of these branches through SSH. See the [MerVLAN Help Guide, CLI usage](https://github.com/r80xcore/mervlan/blob/main/docs/HELP.md#7-cli-usage) for instructions.
+
+### Contributing
+
+Contributors should normally:
+
+1. Create feature or fix branches from `dev`.
+2. Submit pull requests back into `dev`.
+3. Avoid targeting `main` directly unless requested by the maintainer.
+4. Ensure that emergency fixes made against `main` are also merged or cherry-picked back into `dev`.
+
+When a development version is considered ready, `dev` is merged into `main` and a new tagged GitHub pre-release is published.
 
 ---
 
