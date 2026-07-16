@@ -12,7 +12,7 @@ MerVLAN is a VLAN management addon for Asuswrt-Merlin. This guide covers setup, 
 4. [Applying Your Configuration](#4-applying-your-configuration)
 5. [SSH Key Install](#5-ssh-key-install)
 6. [Logs & Monitoring](#6-logs--monitoring)
-7. [Updating MerVLAN](#updating-mervlan)
+7. [Updating or Restoring MerVLAN](#updating-mervlan)
 8. [CLI Usage](#7-cli-usage)
 9. [Device Support](#8-device-support)
 10. [Get Help & Support](#9-get-help--support)
@@ -614,7 +614,7 @@ NODE2 (192.168.1.51):  br30
 <br>
 <br>
 
-<h2 id="updating-mervlan">7. Updating MerVLAN <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
+<h2 id="updating-mervlan">7. Updating or Restoring MerVLAN <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 > [!NOTE]
 > Updates preserve your settings, SSH keys, MAC Shield databases, and local backups whenever possible. After updating, MerVLAN refreshes the public web UI files and reapplies the required service hooks. Refresh your browser after the update to load the latest web interface.
@@ -680,6 +680,78 @@ If an update does not behave as expected, or the configuration becomes corrupted
 Configured remote APs that are reachable over SSH are automatically synchronized as part of the normal update process.
 
 Updating through the web UI remains the recommended method for normal use. Manual SSH updates are mainly intended for development, branch switching, downgrading, troubleshooting, and recovery.
+
+
+### Restoring a Previous Backup
+
+MerVLAN keeps the three newest local backups created during updates. Restoring a backup replaces the current MerVLAN installation, settings, and stored data with the selected restore point.
+
+1. Connect to the main router over SSH.
+2. Open the MerVLAN directory and start restore mode:
+`cd /jffs/addons/mervlan`
+`sh functions/update_mervlan.sh restore `
+
+4. Select one of the available backups. The newest backup is listed first.
+5. Review the selected backup and enter `y` to confirm the restore.
+6. When completed, MerVLAN displays the version that was replaced and the version restored from the backup.
+
+> [!CAUTION]
+> A restore is a complete rollback, not a settings-only restore. Changes made after the selected backup was created will be replaced.
+
+## Post-Restore Steps
+
+A restore replaces the MerVLAN addon directory with the selected backup, but it does not automatically refresh the public web files, rebuild the hardware profile, reinstall service hooks, restore the active boot state, or synchronize configured nodes. The following steps complete those tasks after the restore.
+
+Run all commands on the main router from the MerVLAN base directory:
+
+`cd /jffs/addons/mervlan`
+
+### 1. Refresh the Public Web Files and Hardware Profile
+
+`sh uninstall.sh && sh install.sh && sh functions/hw_probe.sh`
+
+### 2. Reinstall the Main Router Service Hooks
+
+`sh functions/mervlan_boot.sh setupdisable && sh functions/mervlan_boot.sh setupenable`
+
+### 3. Re-enable MerVLAN at Boot
+
+Run this only when you want MerVLAN to apply the configured VLANs automatically after the router starts:
+
+`sh functions/mervlan_boot.sh disable && sh functions/mervlan_boot.sh enable`
+
+### 4. Synchronize and Re-enable Configured Nodes
+
+Run these commands only when remote AiMesh or AP nodes are configured:
+
+`sh functions/sync_nodes.sh`
+
+`sh functions/mervlan_boot.sh nodedisable && sh functions/mervlan_boot.sh nodeenable`
+
+### 5. Verify the Restored Installation
+
+`sh functions/mervlan_boot.sh status`
+
+Refresh the browser after completing these steps to load the restored web interface.
+
+---
+
+## Combined Commands
+
+### Without Configured Nodes
+
+Refresh the installation, rebuild the hardware profile, reinstall the service hooks, and enable MerVLAN at boot:
+
+`sh uninstall.sh && sh install.sh && sh functions/hw_probe.sh && sh functions/mervlan_boot.sh setupdisable && sh functions/mervlan_boot.sh setupenable && sh functions/mervlan_boot.sh disable && sh functions/mervlan_boot.sh enable`
+
+### With Configured Nodes
+
+Also synchronize the restored files to configured nodes and reinstall their service hooks:
+
+`sh uninstall.sh && sh install.sh && sh functions/hw_probe.sh && sh functions/mervlan_boot.sh setupdisable && sh functions/mervlan_boot.sh setupenable && sh functions/mervlan_boot.sh disable && sh functions/mervlan_boot.sh enable && sh functions/sync_nodes.sh && sh functions/mervlan_boot.sh nodedisable && sh functions/mervlan_boot.sh nodeenable`
+
+> [!NOTE]
+> The combined commands enable MerVLAN at boot. To leave automatic boot application disabled, remove `&& sh functions/mervlan_boot.sh enable` from the command.
 
 <br>
 <br>
