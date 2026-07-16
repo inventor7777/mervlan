@@ -624,84 +624,85 @@ These commands are useful when working over SSH on the main router. Most users s
 
 ### Manual Update Commands
 
-| Command                                     | What it does                                                                  |
-| ------------------------------------------- | ----------------------------------------------------------------------------- |
-| `sh functions/update_mervlan.sh`            | Update from the stable/main channel.                                          |
-| `sh functions/update_mervlan.sh dev`        | Update from the development channel.                                          |
-| `sh functions/update_mervlan.sh update dev` | Explicit development-channel update. Same intent as the UI dev update button. |
-| `sh functions/update_mervlan.sh restore`    | Open the restore flow and select one of the local MerVLAN backups.            |
+| Command | What it does |
+| --- | --- |
+| <pre>`sh functions/update_mervlan.sh`</pre> | Update from the main public beta channel. |
+| <pre>`sh functions/update_mervlan.sh dev`</pre> | Update from the development channel. |
+| <pre>`sh functions/update_mervlan.sh update dev`</pre> | Explicit development-channel update. Same intent as the UI dev update button. |
+| <pre>`sh functions/update_mervlan.sh restore`</pre> | Open the restore flow and select one of the local MerVLAN backups. |
+| <pre>`sh functions/update_mervlan.sh BRANCH`</pre> | Replace `BRANCH` with the name of a custom branch for development or test installations.<br>For example, run `sh functions/update_mervlan.sh dev-test9` to update MerVLAN from the `dev-test9` branch. |
 
 > [!NOTE]
 > Updates preserve your settings, SSH keys, MAC Shield databases, and local backups whenever possible. After updating, MerVLAN refreshes the public web UI files and reapplies the required service hooks. Refresh your browser after the update to load the latest web interface.
 
 ### Install, Reinstall, and Uninstall
 
-| Command                                               | What it does                                                                                                                                                                      |
-| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sh install.sh full`                                  | Fresh install from the stable/main channel. Downloads the package, installs files, runs hardware probe, and sets up the UI.                                                       |
-| `sh install.sh full dev`                              | Fresh install from the development channel.                                                                                                                                       |
-| `TMP_DIR=/tmp/mervlan_staging sh install.sh download` | Download a MerVLAN tarball to a staging folder without installing it.                                                                                                             |
-| `TMP_DIR=/tmp/mervlan_staging sh install.sh tarball`  | Install from a previously downloaded tarball in the staging folder.                                                                                                               |
-| `sh install.sh credentials`                           | Update stored SSH username and SSH port only.                                                                                                                                     |
-| `sh uninstall.sh`                                     | Remove the web UI entry and service hooks, but keep the addon files and data.                                                                                                     |
-| `sh uninstall.sh full`                                | Full uninstall. Removes web UI, hooks, addon files, data, and node-side install where possible.                                                                                   |
-| `sh uninstall.sh && sh install.sh`                    | Manual UI refresh/reinstall from the already-installed local files. Useful after manually changing `mervlan.asp`, public UI files, or install wiring without doing a full update. |
+| Command | What it does |
+| --- | --- |
+| <pre>`sh install.sh full`</pre> | Perform a fresh installation from the `main` public beta channel. Downloads the package, installs the required files, runs the hardware probe, and sets up the web UI. |
+| <pre>`sh install.sh full dev`</pre> | Perform a fresh installation from the `dev` development channel. |
+| <pre>`TMP_DIR=/tmp/mervlan_staging sh install.sh download`</pre> | Download the MerVLAN tarball to a staging directory without installing it. |
+| <pre>`TMP_DIR=/tmp/mervlan_staging sh install.sh tarball`</pre> | Install MerVLAN from a previously downloaded tarball in the staging directory. |
+| <pre>`sh install.sh credentials`</pre> | Update only the stored SSH username and SSH port. |
+| <pre>`sh uninstall.sh`</pre> | Remove the web UI entry and service hooks while preserving the addon files, settings, and data. |
+| <pre>`sh uninstall.sh full`</pre> | Perform a full uninstall. Removes the web UI, service hooks, addon files, settings, data, and node-side installations where possible. |
+| <pre>`sh uninstall.sh && sh install.sh`</pre> | Reinstall the web UI and service hooks using the existing local addon files. Useful after manually changing `mervlan.asp`, public UI files, or installation wiring without performing a full update. Note that boot hook and cron will be disabled. Enable manually via UI afterwards. |
 
 > [!CAUTION]
-> **Be careful with full uninstall:** it is intended for a clean removal or clean reinstall. Use normal uninstall + install when you only need to refresh the web UI mount and public files.
+> **Be careful when using the full uninstall command.** It is intended for complete removal or a clean reinstall. Use the normal uninstall and install commands when you only need to refresh the web UI mount, public files, or service hooks.
 
 ### Service and Boot Control
 
-| Command                                     | What it does                                                                                       |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `sh functions/mervlan_boot.sh status`       | Show boot, addon, service-event, cron, node, and MAC shield state.                                 |
-| `sh functions/mervlan_boot.sh enable`       | Enable MerVLAN at boot and enable the health cron.                                                 |
-| `sh functions/mervlan_boot.sh disable`      | Disable boot persistence and tear down active shield chains, while keeping settings and databases. |
-| `sh functions/mervlan_boot.sh setupenable`  | Install or repair service-event and services-start hooks.                                          |
-| `sh functions/mervlan_boot.sh setupdisable` | Remove MerVLAN hook blocks from service-event and services-start.                                  |
-| `sh functions/mervlan_boot.sh cronenable`   | Enable the periodic health check cron job.                                                         |
-| `sh functions/mervlan_boot.sh crondisable`  | Disable the periodic health check cron job.                                                        |
-| `sh functions/mervlan_boot.sh nodeenable`   | Propagate node service setup to configured nodes over SSH.                                         |
-| `sh functions/mervlan_boot.sh nodedisable`  | Remove MerVLAN service hooks from configured nodes over SSH.                                       |
+| Command | What it does |
+| --- | --- |
+| <pre>`sh functions/mervlan_boot.sh status`</pre> | Show the current boot, addon, service-event, cron, node, and MAC Shield status. |
+| <pre>`sh functions/mervlan_boot.sh enable`</pre> | Enable MerVLAN at boot and enable the periodic health-check cron job. |
+| <pre>`sh functions/mervlan_boot.sh disable`</pre> | Disable boot persistence and remove active MAC Shield chains while preserving settings and databases. |
+| <pre>`sh functions/mervlan_boot.sh setupenable`</pre> | Install or repair the `service-event` and `services-start` hooks. |
+| <pre>`sh functions/mervlan_boot.sh setupdisable`</pre> | Remove the MerVLAN hook blocks from `service-event` and `services-start`. |
+| <pre>`sh functions/mervlan_boot.sh cronenable`</pre> | Enable the periodic health-check cron job. |
+| <pre>`sh functions/mervlan_boot.sh crondisable`</pre> | Disable the periodic health-check cron job. |
+| <pre>`sh functions/mervlan_boot.sh nodeenable`</pre> | Install or repair MerVLAN service hooks on configured nodes over SSH. |
+| <pre>`sh functions/mervlan_boot.sh nodedisable`</pre> | Remove MerVLAN service hooks from configured nodes over SSH. |
 
 ### Manual Apply and Node Operations
 
-| Command                                     | What it does                                                       |
-| ------------------------------------------- | ------------------------------------------------------------------ |
-| `sh functions/mervlan_manager.sh`           | Apply the current settings locally on the router.                  |
-| `sh functions/mervlan_manager.sh --dry-run` | Run the manager without making live network changes.               |
-| `sh functions/sync_nodes.sh`                | Copy MerVLAN files and node-filtered settings to configured nodes. |
-| `sh functions/execute_nodes.sh`             | Run the node apply workflow over SSH.                              |
-| `sh functions/execute_nodes.sh nodesonly`   | Run only the node-side apply workflow.                             |
-| `sh functions/hw_probe.sh`                  | Refresh the local hardware profile in settings.json.               |
+| Command | What it does |
+| --- | --- |
+| <pre>`sh functions/mervlan_manager.sh`</pre> | Apply the current MerVLAN settings locally on the main router. |
+| <pre>`sh functions/mervlan_manager.sh --dry-run`</pre> | Run the manager in dry-run mode without making live network changes. |
+| <pre>`sh functions/sync_nodes.sh`</pre> | Copy MerVLAN files and node-filtered settings to configured nodes. |
+| <pre>`sh functions/execute_nodes.sh`</pre> | Run the complete node apply workflow over SSH. |
+| <pre>`sh functions/execute_nodes.sh nodesonly`</pre> | Run only the node-side apply workflow. |
+| <pre>`sh functions/hw_probe.sh`</pre> | Detect the local hardware configuration and refresh the hardware profile in `settings.json`. |
 
 > [!NOTE]
-> The normal UI Apply path handles save, sync, local apply, and node apply in the expected order. Use these CLI commands when debugging or recovering from a partial state.
+> The normal UI Apply process saves the configuration, synchronizes configured nodes, applies the local settings, and applies the node settings in the required order. Use these CLI commands mainly for development, debugging, or recovery from a partial state.
 
 ### Client List and MAC Shield
 
-| Command                                                | What it does                                                                                                                                                             |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `sh functions/collect_clients.sh`                      | Rebuild the Active VLAN Clients JSON from the main router and configured nodes.                                                                                          |
-| `sh functions/mac_refresh.sh`                          | Clear and rebuild the MAC shield database from currently connected VLAN clients. Use after moving devices back to br0 so they do not stay blocked by old shield entries. |
-| `sh functions/mac_client_meta.sh`                      | Materialize client display names and MAC shield overrides after metadata changes. Normally triggered by the UI.                                                          |
-| `cat /tmp/mervlan_tmp/mac_shield.db`                   | Show the active in-RAM MAC shield database.                                                                                                                              |
-| `cat /jffs/addons/mervlan/tmp/mac_shield.db`           | Show the persistent JFFS MAC shield checkpoint.                                                                                                                          |
-| `cat /jffs/addons/mervlan/tmp/mac_shield_override.db`  | Show MACs that are unlocked from MAC shield blocking.                                                                                                                    |
-| `cat /jffs/addons/mervlan/tmp/client_name_override.db` | Show friendly client-name mappings used by the UI.                                                                                                                       |
+| Command | What it does |
+| --- | --- |
+| <pre>`sh functions/collect_clients.sh`</pre> | Rebuild the Active VLAN Clients data using information from the main router and configured nodes. |
+| <pre>`sh functions/mac_refresh.sh`</pre> | Clear and rebuild the MAC Shield database using currently connected VLAN clients. Run this after moving devices back to `br0` so they do not remain blocked by outdated shield entries. |
+| <pre>`sh functions/mac_client_meta.sh`</pre> | Apply client display-name mappings and MAC Shield overrides after metadata changes. This is normally triggered automatically by the web UI. |
+| <pre>`cat /tmp/mervlan_tmp/mac_shield.db`</pre> | Show the active in-memory MAC Shield database. |
+| <pre>`cat /jffs/addons/mervlan/tmp/mac_shield.db`</pre> | Show the persistent JFFS MAC Shield checkpoint. |
+| <pre>`cat /jffs/addons/mervlan/tmp/mac_shield_override.db`</pre> | Show the MAC addresses that are exempt from MAC Shield blocking. |
+| <pre>`cat /jffs/addons/mervlan/tmp/client_name_override.db`</pre> | Show the friendly client-name mappings used by the web UI. |
 
 ### Logs and Quick Debugging
 
-| Command                                              | What it does                                                                    |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `tail -n 80 /tmp/mervlan_tmp/logs/cli_output.log`    | Show recent CLI output from UI-triggered actions.                               |
-| `tail -n 120 /tmp/mervlan_tmp/logs/vlan_manager.log` | Show recent manager, heal, MAC shield, and service logs.                        |
-| `tail -n 80 /tmp/mervlan_tmp/logs/boot_wrap.log`     | Show recent boot wrapper activity.                                              |
-| `cat /tmp/mervlan_tmp/results/vlan_clients.json`     | View the generated client inventory JSON used by the Active VLAN Clients panel. |
-| `: > /tmp/mervlan_tmp/logs/cli_output.log`           | Clear the CLI output log manually.                                              |
+| Command | What it does |
+| --- | --- |
+| <pre>`tail -n 80 /tmp/mervlan_tmp/logs/cli_output.log`</pre> | Show recent command output from actions triggered through the web UI. |
+| <pre>`tail -n 120 /tmp/mervlan_tmp/logs/vlan_manager.log`</pre> | Show recent manager, healing, MAC Shield, and service activity. |
+| <pre>`tail -n 80 /tmp/mervlan_tmp/logs/boot_wrap.log`</pre> | Show recent MerVLAN boot-wrapper activity. |
+| <pre>`cat /tmp/mervlan_tmp/results/vlan_clients.json`</pre> | Show the generated client inventory used by the Active VLAN Clients panel. |
+| <pre>`: > /tmp/mervlan_tmp/logs/cli_output.log`</pre> | Clear the CLI output log manually. |
 
 > [!CAUTION]
-> **Do not run `service-event-handler.sh` directly.** It expects firmware-provided service-event variables and is meant to be called by Asuswrt-Merlin, not by hand.
+> **Do not run `service-event-handler.sh` directly.** It expects service-event variables supplied by the firmware and is intended to be called by Asuswrt-Merlin, not executed manually.
 
 <br>
 <br>
