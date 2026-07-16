@@ -88,7 +88,7 @@ MerVLAN is a VLAN management addon for Asuswrt-Merlin. It manages VLAN bridges, 
 >
 > Before your first real apply: **General Settings -> Disable "Dry Run" -> Save Settings**
 > You can re-enable it anytime to safely test a new config before committing it.
-### Service Buttons - Boot & Health
+
 Review these three global toggles in the General Settings panel before your first apply.
 
 | Toggle      | Default       | What it does                                                                                                                                                        |
@@ -98,6 +98,7 @@ Review these three global toggles in the General Settings panel before your firs
 | **ENS**     | <kbd>OFF</kbd> | Enable Native SSID - allows VLANs on base radios (wl0, wl1). Most users do not need this; use Guest Network SSIDs instead. See the SSID Setup tab for more details. |
 <br>
 
+### Service Buttons - Boot & Health
 
 Boot persistence and the automatic VLAN health monitor are controlled together by three buttons in the General Settings panel.
 
@@ -178,7 +179,7 @@ RT-AX95Q 192.168.186.201:boot=enabled addon=node-on event=active cron=present is
 
 <h2 id="2-ssid-configuration">2. SSID Configuration <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
-MerVLAN follows this flow for each SSID slot. Up to 12 slots are available - leave a slot blank to skip it.
+MerVLAN follows this flow for each available SSID slot. The number of slots depends on the radios and wireless interfaces supported by the device. Leave a slot blank to skip it.
 
 > [!TIP]
 > **Flow:** SSID Name -> VLAN ID -> AP Isolation -> Node Assignment
@@ -451,7 +452,7 @@ Clicking <kbd>SSH Keys Install</kbd> generates an ED25519 key pair on the main r
 > [!TIP]
 > If a key pair already exists, the script reuses it and prints the existing public key. You do not need to re-install it on nodes unless the key was regenerated.
 
-### Step 2 - AiMesh Nodes
+### Step 2A - AiMesh Nodes
 
 For AiMesh nodes that are managed by this router, Asus handles key propagation - but only during the node's boot process.
 
@@ -464,7 +465,7 @@ For AiMesh nodes that are managed by this router, Asus handles key propagation -
 >
 > The main router does **not** need to be rebooted. Only the AiMesh nodes do. After they come back up, MerVLAN will be able to connect to them via SSH.
 
-### Step 2 - Standalone / Full AP Nodes
+### Step 2B - Standalone / Full AP Nodes
 
 Standalone APs running in AP mode are independent devices - they do not receive keys from the main router automatically. You must add the public key to each one individually.
 
@@ -512,7 +513,7 @@ MerVLAN provides real-time feedback and persistent logs for every operation.
 >
 > Clients attached to MerVLAN VLAN bridges will not appear correctly in the built-in ASUS client list, Network Map, or traffic/client monitoring views.
 >
-> This happens because those ASUS views mostly track clients on the default LAN bridge, `br0`. Once MerVLAN moves a client interface into a dedicated VLAN bridge such as `br20`, `br30`, or `br40`, ASUS no longer see that client through its normal internal collection system.
+> This happens because those ASUS views mostly track clients on the default LAN bridge, `br0`. Once MerVLAN moves a client interface into a dedicated VLAN bridge such as `br20`, `br30`, or `br40`, The built-in ASUS tools no longer see that client through its normal internal collection system.
 >
 > Use MerVLAN's Active VLANs and client/log views when checking VLAN-connected clients.
 
@@ -687,18 +688,22 @@ Updating through the web UI remains the recommended method for normal use. Manua
 MerVLAN keeps the three newest local backups created during updates. Restoring a backup replaces the current MerVLAN installation, settings, and stored data with the selected restore point.
 
 1. Connect to the main router over SSH.
-2. Open the MerVLAN directory and start restore mode:
-`cd /jffs/addons/mervlan`
-`sh functions/update_mervlan.sh restore `
+2. Open the MerVLAN directory:
+
+   `cd /jffs/addons/mervlan`
+
+3. Start restore mode:
+
+   `sh functions/update_mervlan.sh restore`
 
 4. Select one of the available backups. The newest backup is listed first.
-5. Review the selected backup and enter `y` to confirm the restore.
-6. When completed, MerVLAN displays the version that was replaced and the version restored from the backup.
+5. Review the selected backup and enter `y` to confirm.
+6. When completed, MerVLAN displays the version that was replaced and the version restored.
 
 > [!CAUTION]
 > A restore is a complete rollback, not a settings-only restore. Changes made after the selected backup was created will be replaced.
 
-## Post-Restore Steps
+### Post-Restore Steps
 
 A restore replaces the MerVLAN addon directory with the selected backup, but it does not automatically refresh the public web files, rebuild the hardware profile, reinstall service hooks, restore the active boot state, or synchronize configured nodes. The following steps complete those tasks after the restore.
 
@@ -706,21 +711,21 @@ Run all commands on the main router from the MerVLAN base directory:
 
 `cd /jffs/addons/mervlan`
 
-### 1. Refresh the Public Web Files and Hardware Profile
+#### 1. Refresh the Public Web Files and Hardware Profile
 
 `sh uninstall.sh && sh install.sh && sh functions/hw_probe.sh`
 
-### 2. Reinstall the Main Router Service Hooks
+#### 2. Reinstall the Main Router Service Hooks
 
 `sh functions/mervlan_boot.sh setupdisable && sh functions/mervlan_boot.sh setupenable`
 
-### 3. Re-enable MerVLAN at Boot
+#### 3. Re-enable MerVLAN at Boot
 
 Run this only when you want MerVLAN to apply the configured VLANs automatically after the router starts:
 
 `sh functions/mervlan_boot.sh disable && sh functions/mervlan_boot.sh enable`
 
-### 4. Synchronize and Re-enable Configured Nodes
+#### 4. Synchronize and Re-enable Configured Nodes
 
 Run these commands only when remote AiMesh or AP nodes are configured:
 
@@ -728,7 +733,7 @@ Run these commands only when remote AiMesh or AP nodes are configured:
 
 `sh functions/mervlan_boot.sh nodedisable && sh functions/mervlan_boot.sh nodeenable`
 
-### 5. Verify the Restored Installation
+#### 5. Verify the Restored Installation
 
 `sh functions/mervlan_boot.sh status`
 
@@ -736,15 +741,15 @@ Refresh the browser after completing these steps to load the restored web interf
 
 ---
 
-## Combined Commands
+### Combined Commands
 
-### Without Configured Nodes
+#### Without Configured Nodes
 
 Refresh the installation, rebuild the hardware profile, reinstall the service hooks, and enable MerVLAN at boot:
 
 `sh uninstall.sh && sh install.sh && sh functions/hw_probe.sh && sh functions/mervlan_boot.sh setupdisable && sh functions/mervlan_boot.sh setupenable && sh functions/mervlan_boot.sh disable && sh functions/mervlan_boot.sh enable`
 
-### With Configured Nodes
+#### With Configured Nodes
 
 Also synchronize the restored files to configured nodes and reinstall their service hooks:
 
@@ -893,7 +898,7 @@ These devices are auto-detected on startup - no manual configuration needed. Mor
 > [!WARNING]
 > *RT-AX88U hardware limitation**
 >
-> Due to the internal switch design on this model, LAN port 5-8 share a single VLAN-capable interface. 
+> Due to the internal switch design on this model, LAN port 5-8 shares a single VLAN-capable interface. 
 
 ### If Your Device Is Not Listed
 
