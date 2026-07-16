@@ -47,7 +47,8 @@ The addon installs under the normal Merlin web interface (LAN section) and handl
 - **[View the complete list of supported devices](docs/HELP.md#8-device-support)**
 - **Status:** Public beta – expect bugs and breaking changes.
 - **Mode:** **AP‑mode only** (main and nodes must be running as APs, not routers).
-- If you hit issues, collect logs and share them (Discord/SNB/PM):
+- For setup questions and general discussion, use [Discord](https://discord.com/invite/8c3C8q54hn) or [snbforums.com](https://www.snbforums.com/threads/mervlan-v0-52-1-dev-0-52-7-simple-and-powerful-vlan-management-beta.95936/).
+- If you hit issues, reproducible bugs or broken features, open a GitHub Issue and include the relevant logs:
   - CLI output:
     - `/tmp/mervlan_tmp/logs/cli_output.log` (also visible via the UI)
   - Main log:
@@ -125,7 +126,8 @@ This gives you a repeatable, UI‑driven way to deploy and maintain VLANs on Asu
 - **SSH enabled** on the main AP and any standalone APs/nodes (AiMesh nodes share SSH keys).
 - **Ethernet backhaul only** between nodes/APs:
   - Wi‑Fi backhaul cannot preserve VLAN tags on Asus hardware/driver stacks.
-  - Daisy‑chaining APs over Ethernet (switch → AP → AP) is supported and under active testing.
+  - Directly connected downstream APs (`switch → main unit → AP`) are supported experimentally when the connecting LAN port on the main unit is configured as a trunk.
+  - AP-to-AP and node-to-node daisy-chaining is not currently supported.
 - **VLAN‑aware upstream device** (mandatory):
   - Managed switch and VLAN‑aware router/firewall (e.g., OPNsense, pfSense, Asus Pro, etc.).
   - MerVLAN does **not** provide routing, firewalling, or DHCP; those must be handled upstream.
@@ -145,7 +147,7 @@ SSH key behavior:
 
 <h2 id="limitations">Limitations <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
-- Maximum number of VLANs is effectively bounded by the number of SSID slots on your hardware (e.g., if the AP supports 5 SSIDs, you can’t have 12 actively used VLANs mapped to SSIDs).
+- The number of wireless VLAN assignments is bounded by the number of usable SSID slots supported by the device. (e.g., if the AP supports 5 SSIDs, you can’t have 12 actively used VLANs mapped to SSIDs). Additional wired-only VLANs may be assigned to physical LAN ports but the number of assignable port may differ between devices.
 - Mesh behavior is constrained by Asus firmware:
   - Some models support more guest SSIDs than they can actually mesh; non‑mesh SSIDs will only broadcast from the main node.
   - Devices on VLANs use standard band steering; per‑VLAN steering is not supported.
@@ -168,8 +170,7 @@ mkdir -p /jffs/addons/mervlan && /usr/sbin/curl -fsL --retry 3 "https://raw.gith
 
 ### Development install
 
-Use this only if you want to test the latest development build. It may contain unfinished changes and can be less stable than the main branch. But might support
-more devices, better security and newer implementations.
+Use this if you want to test the latest development build. It may contain unfinished changes and can be less stable than the `main` branch, but may include support for additional devices, security improvements, and newer implementations.
 
 ```sh
 mkdir -p /jffs/addons/mervlan && /usr/sbin/curl -fsL --retry 3 "https://raw.githubusercontent.com/r80xcore/mervlan/refs/heads/dev/install.sh" -o "/jffs/addons/mervlan/install.sh" && chmod 0755 /jffs/addons/mervlan/install.sh && /jffs/addons/mervlan/install.sh full dev
@@ -281,7 +282,7 @@ Log formatting, colors, and syslog tagging are configurable in:
 
 - Developed on an **ASUS XT8** mesh system in AP‑mode.
 - Intended to work with most newer Asuswrt‑Merlin / Gnuton‑supported routers and mesh AP systems when used as APs.
-- Daisy‑chained AP topologies (switch → AP → AP) are under active testing; experimental trunk options are exposed in the UI.
+- **Experimental trunk support** for APs connected directly to selected LAN ports on the main unit, are under active testing; experimental trunk options are exposed in the UI.
 
 For structured beta testing and discussion, see the SNBForums thread and Discord (links below)
 
@@ -366,7 +367,7 @@ Find your nvramname with:
 nvram get productid
 ```
 
-MODEL= can either be the same name as the nvramname or another if the unit is commonly knows something else, as the XT8 shows.
+`MODEL` can use the same value as the NVRAM product ID or a different display name if the device is commonly known by another model name, as shown by the XT8 example.
 
 ### Models requiring testing
 
@@ -418,7 +419,7 @@ For development and testing, temporary branches may also be created from `dev`. 
 
 These branches are temporary and are only intended for active development and targeted testing. Unless you are directly involved in testing a specific branch, using one is strongly discouraged unless requested by the maintainer. They may contain incomplete, experimental, or untested code and should not be considered release versions.
 
-MerVLAN can be manually updated to one of these branches through SSH. See the [MerVLAN Help Guide, CLI usage](https://github.com/r80xcore/mervlan/blob/main/docs/HELP.md#7-cli-usage) for instructions.
+MerVLAN can be manually updated to one of these branches through SSH. See the [MerVLAN Help Guide, CLI Usage](docs/HELP.md#7-cli-usage) for instructions.
 
 ### Contributing
 
