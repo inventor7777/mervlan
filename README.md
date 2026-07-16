@@ -6,7 +6,7 @@ It is designed for AP‑mode deployments and lets you:
 
 - Assign VLANs per SSID (Wi‑Fi network)
 - Assign VLANs per physical LAN port
-- (Experimental) Configure trunk ports for daisy‑chained APs
+- (Experimental) Configure trunk ports for nodes connected directly to the main unit
 - Synchronize VLAN config to other Asuswrt‑Merlin nodes over SSH
 
 The addon installs under the normal Merlin web interface (LAN section) and handles the low‑level bridge/VLAN wiring for you.
@@ -82,7 +82,7 @@ This gives you a repeatable, UI‑driven way to deploy and maintain VLANs on Asu
 
 - Per‑SSID VLAN tagging (up to the number of SSIDs supported by your device).
 - Per‑LAN‑port VLAN tagging for access ports.
-- **Experimental trunk support** for daisy‑chaining AP units via Ethernet backhaul.
+- **Experimental MAIN → NODE trunk support** for nodes connected directly to selected LAN ports on the main unit.
 - Built‑in “Clients Overview” panel to see which VLAN clients are active on each node.
 
 **Multi‑AP / Multi‑node aware**
@@ -124,17 +124,17 @@ This gives you a repeatable, UI‑driven way to deploy and maintain VLANs on Asu
 - **AP‑mode only** on all participating routers/APs.
 - **JFFS enabled** for persistent storage.
 - **SSH enabled** on the main AP and any standalone APs/nodes (AiMesh nodes share SSH keys).
-- **Ethernet backhaul only** between nodes/APs:
-  - Wi‑Fi backhaul cannot preserve VLAN tags on Asus hardware/driver stacks.
-  - Directly connected downstream APs (`switch → main unit → AP`) are supported experimentally when the connecting LAN port on the main unit is configured as a trunk.
-  - AP-to-AP and node-to-node daisy-chaining is not currently supported.
+- **Ethernet backhaul only** between the main unit, upstream switch and nodes:
+  - Wi-Fi backhaul cannot preserve VLAN tags on Asus hardware or driver stacks.
+  - **MAIN → NODE trunking is supported experimentally:** a downstream node may connect directly to a selected LAN port on the main unit when that port is configured as an 802.1Q trunk.
+  - **NODE → NODE trunking is not supported:** a node cannot provide a MerVLAN trunk to another downstream node. Each directly connected node must connect to the main unit.
 - **VLAN‑aware upstream device** (mandatory):
   - Managed switch and VLAN‑aware router/firewall (e.g., OPNsense, pfSense, Asus Pro, etc.).
   - MerVLAN does **not** provide routing, firewalling, or DHCP; those must be handled upstream.
 
 Multi‑AP notes:
 
-- All APs must connect to **VLAN‑aware switches**.
+- Each node must either connect to a VLAN-aware switch or directly to a trunk-enabled LAN port on the main unit using the experimental MAIN → NODE topology.
 - LAN port VLAN tagging is currently **global** – the same per‑port mapping is applied to all synced APs.
   - Per‑device LAN port settings are planned but not yet available; for now, any per‑device tweaks must be applied manually via SSH.
 
@@ -147,7 +147,7 @@ SSH key behavior:
 
 <h2 id="limitations">Limitations <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
-- The number of wireless VLAN assignments is bounded by the number of usable SSID slots supported by the device. (e.g., if the AP supports 5 SSIDs, you can’t have 12 actively used VLANs mapped to SSIDs). Additional wired-only VLANs may be assigned to physical LAN ports but the number of assignable port may differ between devices.
+- The number of wireless VLAN assignments is bounded by the number of usable SSID slots supported by the device. For example, a device with five usable SSID slots can have up to five active wireless VLAN assignments. Additional wired-only VLANs may be assigned to physical LAN ports, although the number of assignable ports varies by device.
 - Mesh behavior is constrained by Asus firmware:
   - Some models support more guest SSIDs than they can actually mesh; non‑mesh SSIDs will only broadcast from the main node.
   - Devices on VLANs use standard band steering; per‑VLAN steering is not supported.
@@ -282,7 +282,7 @@ Log formatting, colors, and syslog tagging are configurable in:
 
 - Developed on an **ASUS XT8** mesh system in AP‑mode.
 - Intended to work with most newer Asuswrt‑Merlin / Gnuton‑supported routers and mesh AP systems when used as APs.
-- **Experimental trunk support** for APs connected directly to selected LAN ports on the main unit, are under active testing; experimental trunk options are exposed in the UI.
+- Experimental MAIN → NODE trunk support is under active testing and can be configured through the trunk options in the UI.
 
 For structured beta testing and discussion, see the SNBForums thread and Discord (links below)
 
