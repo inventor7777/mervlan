@@ -12,7 +12,7 @@
 #  |__/     |__/ \_______/|__/          \_/    |________/|__/  |__/|__/  \__/  #
 #                                                                              #
 # ============================================================================ #
-#          - File: service-event-handler.sh || version="0.59"                  #
+#          - File: service-event-handler.sh || version="0.60"                  #
 # ============================================================================ #
 # - Purpose:    Event handler for http and service events                      #
 # ============================================================================ #
@@ -123,6 +123,33 @@ get_action_request_token() {
     tr -cd 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-'
 }
 
+decode_update_ref_action() {
+  _ura_encoded="${1#updateref_vlanmgr_}"
+  _ura_kind="${_ura_encoded%%_*}"
+  _ura_hex="${_ura_encoded#*_}"
+  [ "$_ura_hex" != "$_ura_encoded" ] || return 1
+  case "$_ura_kind" in h|t) ;; *) return 1 ;; esac
+  case "$_ura_hex" in ''|*[!0-9a-f]*) return 1 ;; esac
+  [ $(( ${#_ura_hex} % 2 )) -eq 0 ] || return 1
+
+  _ura_escaped=""
+  while [ -n "$_ura_hex" ]; do
+    _ura_pair="${_ura_hex%${_ura_hex#??}}"
+    _ura_hex="${_ura_hex#??}"
+    _ura_oct=$(printf '%03o' "$((0x$_ura_pair))") || return 1
+    _ura_escaped="${_ura_escaped}\\${_ura_oct}"
+  done
+  _ura_name=$(printf '%b' "$_ura_escaped")
+  _ura_clean=$(printf '%s' "$_ura_name" | tr -cd 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/._-')
+  [ -n "$_ura_name" ] && [ "$_ura_clean" = "$_ura_name" ] || return 1
+  case "$_ura_name" in *..*|*//*|/*|*/|.*|*.lock) return 1 ;; esac
+
+  case "$_ura_kind" in
+    h) printf 'refs/heads/%s\n' "$_ura_name" ;;
+    t) case "$_ura_name" in v[0-9]*) printf 'refs/tags/%s\n' "$_ura_name" ;; *) return 1 ;; esac ;;
+  esac
+}
+
 json_get_flag() {
     key="$1"
     def="$2"
@@ -152,7 +179,7 @@ case "${TYPE}_${EVENT}" in
   save_vlanmgr|apply_vlanmgr|sync_vlanmgr|executenodes_vlanmgr|\
   executenodesonly_vlanmgr|genkey_vlanmgr|enableservice_vlanmgr|\
   disableservice_vlanmgr|checkservice_vlanmgr|collectclients_vlanmgr|\
-  clearclilog_vlanmgr|update_vlanmgr|updatedev_vlanmgr|updaterelease_vlanmgr|hwprobe_vlanmgr|macrefresh_vlanmgr|\
+  clearclilog_vlanmgr|update_vlanmgr|updatedev_vlanmgr|updaterelease_vlanmgr|updateref_vlanmgr_*|hwprobe_vlanmgr|macrefresh_vlanmgr|\
   macclientmeta_vlanmgr)
     APP_EVENT=1
     ;;
@@ -459,6 +486,18 @@ case "${TYPE}_${EVENT}" in
   updatedev_vlanmgr)
     # Update MerVLAN addon from development channel (triggered by update request)
     dispatch_if_executable "/jffs/addons/mervlan/functions/update_mervlan.sh" update dev
+    ;;
+  updateref_vlanmgr_*)
+    _encoded_update_ref="$(decode_update_ref_action "${TYPE}_${EVENT}")"
+    case "$_encoded_update_ref" in
+      refs/heads/?*|refs/tags/v[0-9]*)
+        logger -t "VLANMgr" "handler: decoded explicit update ref '$_encoded_update_ref'"
+        dispatch_if_executable "/jffs/addons/mervlan/functions/update_mervlan.sh" update "$_encoded_update_ref"
+        ;;
+      *)
+        logger -t "VLANMgr" "handler: rejected invalid encoded update ref from '${TYPE}_${EVENT}'"
+        ;;
+    esac
     ;;
   updaterelease_vlanmgr)
     # Update MerVLAN addon to a specific tagged release or custom branch
