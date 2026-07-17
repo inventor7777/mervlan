@@ -1,4 +1,4 @@
-mervlan v0.53.18-dev
+mervlan v0.53.19-dev
 
 Fixed: GUI custom-branch and tagged-release updates not starting
 - Ref-based GUI updates now travel through the legacy updatedev_vlanmgr event,
