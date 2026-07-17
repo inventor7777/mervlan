@@ -1,6 +1,9 @@
-mervlan v0.53.19-dev
+mervlan v0.53.20-dev
 
 Fixed: GUI custom-branch and tagged-release updates not starting
+- Ref submissions now call the legacy MVM_exec/updatedev_vlanmgr path directly
+  from index.html. This prevents an older or stale mervlan.asp wrapper from
+  replacing the selected custom branch/tag with its main or release target.
 - Ref-based GUI updates now travel through the legacy updatedev_vlanmgr event,
   allowing older installed service-event handlers to launch the new updater.
 - update_mervlan.sh consumes vlanmgr_update_ref as a validated one-shot value,
