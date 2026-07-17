@@ -12,7 +12,7 @@
 #  |__/     |__/ \_______/|__/          \_/    |________/|__/  |__/|__/  \__/  #
 #                                                                              #
 # ============================================================================ #
-#                - File: update_mervlan.sh || version="0.60"                   #
+#                - File: update_mervlan.sh || version="0.61"                   #
 # ============================================================================ #
 # - Purpose:    Update the MerVLAN addon in-place while preserving user data.  #
 #                                                                              #
@@ -165,7 +165,6 @@ functions/update_mervlan.sh
 settings/settings.json
 settings/var_settings.sh
 settings/log_settings.sh
-settings/lib_action_ack.sh
 settings/lib_json.sh
 settings/lib_ssh.sh
 templates/mervlan_templates.sh
@@ -174,6 +173,7 @@ www/vlan_form_style.css
 www/vlan_index_style.css"
 
 OPTIONAL_STAGE_FILES="README.md
+settings/lib_action_ack.sh
 functions/heal_event.sh
 functions/service-event-handler.sh
 functions/sync_nodes.sh
@@ -477,6 +477,61 @@ case "$1" in
 		fail_update cli "Unknown mode/channel: $1"
 		;;
 esac
+
+# GUI ref requests are written to custom_settings.txt by the Merlin parent form.
+# Consume the newest value before resolving the download URL.  The value is
+# one-shot: removing every copy prevents a custom branch/tag from unexpectedly
+# overriding a later normal main/dev or CLI update.
+consume_gui_update_ref() {
+	_gui_ref_file="${CUSTOM_SETTINGS_FILE:-/jffs/addons/custom_settings.txt}"
+	GUI_UPDATE_REF=""
+	[ -f "$_gui_ref_file" ] || return 1
+
+	_gui_ref_raw=$(sed -n 's/^vlanmgr_update_ref=//p' "$_gui_ref_file" 2>/dev/null | tail -n 1 | tr -d '\r')
+	[ -n "$_gui_ref_raw" ] || return 1
+
+	_gui_ref_tmp="${_gui_ref_file}.update_ref.$$"
+	if ! sed '/^vlanmgr_update_ref=/d' "$_gui_ref_file" > "$_gui_ref_tmp" 2>/dev/null; then
+		rm -f "$_gui_ref_tmp" 2>/dev/null || :
+		return 2
+	fi
+	chmod 600 "$_gui_ref_tmp" 2>/dev/null || :
+	if ! mv -f "$_gui_ref_tmp" "$_gui_ref_file" 2>/dev/null; then
+		rm -f "$_gui_ref_tmp" 2>/dev/null || :
+		return 2
+	fi
+
+	_gui_ref_clean=$(printf '%s' "$_gui_ref_raw" | tr -cd 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/._-')
+	[ "$_gui_ref_clean" = "$_gui_ref_raw" ] || return 3
+	case "$_gui_ref_clean" in
+		*..*|*//*|*/|*/.|*.lock) return 3 ;;
+	esac
+	case "$_gui_ref_clean" in
+		refs/heads/?*|refs/tags/v[0-9]*) GUI_UPDATE_REF="$_gui_ref_clean" ;;
+		*) return 3 ;;
+	esac
+	return 0
+}
+
+if [ "$MODE" = "update" ]; then
+	consume_gui_update_ref
+	_gui_ref_status=$?
+	case "$_gui_ref_status" in
+		0)
+			CHANNEL="$GUI_UPDATE_REF"
+			info -c cli,vlan "Using one-shot GUI update ref: $CHANNEL"
+			;;
+		1)
+			# No pending GUI ref: preserve normal main/dev/ref CLI behavior.
+			;;
+		2)
+			fail_update cli "Could not safely consume the pending GUI update ref"
+			;;
+		*)
+			fail_update cli "Rejected invalid pending GUI update ref"
+			;;
+	esac
+fi
 
 # For restore, we do not need curl or temp download setup
 if [ "$MODE" = "restore" ]; then
