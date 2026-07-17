@@ -1442,6 +1442,10 @@ body {
         max-width:500px;
 }
 
+#vlanManagerModal {
+        max-width:320px;
+}
+
 .modal--anchored {
         position:absolute;
         transform:translate(-50%, 0);
@@ -1585,6 +1589,7 @@ body {
         display:flex;
         flex-direction:column;
         gap:16px;
+        align-items:center;
 }
 
 .vlan-options .button_gen {
@@ -1593,9 +1598,11 @@ body {
         align-items:center;
         justify-content:center;
         gap:4px;
-        padding:14px 12px;
-        min-height:60px;
+        padding:15px 15px;
+        min-height:50px;
         font-size:14px;
+        width:100%;
+        max-width:250px;
 }
 
 .vlan-option__title {
@@ -1604,7 +1611,7 @@ body {
 }
 
 .vlan-option__subtitle {
-        font-size:12px;
+        font-size:11px;
         color:#D0DBE0;
 }
 
