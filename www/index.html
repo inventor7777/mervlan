@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!-- index.html version="0.53.17-dev" -->
+  <!-- index.html version="0.53.18-dev" -->
   <meta charset="utf-8" />
   <title>MerVLAN Manager</title>
   <link rel="stylesheet" href="vlan_form_style.css" />
@@ -4462,20 +4462,29 @@ function queueServiceAction(actionScriptName, opts = {}) {
         lastLogText = "";
 
         const parentWin = window.parent;
+        let submitted;
         if (parentWin && typeof parentWin.MVM_trigger === "function") {
-            parentWin.MVM_trigger(actionScriptName, parentOpts);
+            submitted = parentWin.MVM_trigger(actionScriptName, parentOpts);
         } else if (parentWin && typeof parentWin.MVM_exec === "function") {
-            parentWin.MVM_exec(actionScriptName, null, parentOpts);
+            submitted = parentWin.MVM_exec(actionScriptName, null, parentOpts);
         } else {
             // Always log failures, even in quiet mode.
             appendCliText(`[${new Date().toLocaleString()}] Parent handler not available for ${description}.\n`, { scroll: 'force' });
-            return;
+            startPolling();
+            return false;
+        }
+
+        if (submitted === false) {
+            appendCliText(`[${new Date().toLocaleString()}] Parent rejected or deduplicated ${description}.\n`, { scroll: 'force' });
+            startPolling();
+            return false;
         }
 
         if (typeof afterSubmit === "function") {
             try { afterSubmit(); } catch (err) { console.error(err); }
         }
         startPolling();
+        return true;
     };
 
     return withActionLock(actionScriptName, handler, cooldownMs);
@@ -6775,11 +6784,16 @@ async function runUpdateFromModal(buttonEl) {
     isUpdateInProgress = true;
     startUpdateSpinner();
     startUpdateLogPolling();
-    queueServiceAction(actionName, {
+    const submitted = await queueServiceAction(actionName, {
       button: buttonEl,
       description: desc,
       cooldownMs: 10000
     });
+    if (submitted !== true) {
+      isUpdateInProgress = false;
+      stopUpdateSpinner("Error");
+      stopUpdateLogPolling();
+    }
     return;
   }
 
@@ -6816,7 +6830,14 @@ async function runUpdateFromModal(buttonEl) {
 
   const parentWin = window.parent;
   if (parentWin && typeof parentWin.MVM_updateRelease === "function") {
-    parentWin.MVM_updateRelease(ref);
+    const submitted = parentWin.MVM_updateRelease(ref);
+    if (submitted !== true) {
+      appendCliText(`[${new Date().toLocaleString()}] Parent rejected or deduplicated ${desc}.\n`, { scroll: 'force' });
+      isUpdateInProgress = false;
+      stopUpdateSpinner("Error");
+      stopUpdateLogPolling();
+      return;
+    }
   } else {
     appendCliText(`[${new Date().toLocaleString()}] Parent handler not available for update.\n`, { scroll: 'force' });
     isUpdateInProgress = false;
