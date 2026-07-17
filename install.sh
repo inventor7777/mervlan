@@ -12,7 +12,7 @@
 #  |__/     |__/ \_______/|__/          \_/    |________/|__/  |__/|__/  \__/  #
 #                                                                              #
 # ============================================================================ #
-#                    - File: install.sh || version="0.54"                      #
+#                    - File: install.sh || version="0.55"                      #
 # ============================================================================ #
 # - Purpose:    Enable the MerVLAN addon and set up necessary files            #
 #                                                                              #
@@ -1030,7 +1030,7 @@ download_mervlan() {
             base="$(basename "$f")"
             case "$base" in
                 log_settings.sh|var_settings.sh|\
-                lib_debug.sh|lib_json.sh|lib_ssh.sh|\
+                lib_debug.sh|lib_json.sh|lib_ssh.sh|lib_action_ack.sh|\
                 lib_ssid_filter.sh|lib_stp.sh|lib_mervqt.sh|\
                 lib_radio.sh|\
                 mervlan_templates.sh|mac_shield_snapshot.sh|\
@@ -1237,6 +1237,7 @@ case "$MODE" in
             www/index.html \
             www/vlan_index_style.css \
             www/vlan_form_style.css \
+            settings/lib_action_ack.sh \
             settings/settings.json
         do
             [ -f "$MERV_BASE/$_req" ] || {
@@ -1334,7 +1335,10 @@ cp -p "$ADDON_DIR/$ADDON/docs/diagrams/topology-1_local.svg" "$PUBLIC_DIR/diagra
 cp -p "$ADDON_DIR/$ADDON/docs/diagrams/topology-2_aimesh.svg" "$PUBLIC_DIR/diagrams/topology-2_aimesh.svg" 2>/dev/null
 cp -p "$ADDON_DIR/$ADDON/docs/diagrams/topology-3_standalone-ap.svg" "$PUBLIC_DIR/diagrams/topology-3_standalone-ap.svg" 2>/dev/null
 cp -p "$ADDON_DIR/$ADDON/docs/diagrams/topology-4_node-to-main.svg" "$PUBLIC_DIR/diagrams/topology-4_node-to-main.svg" 2>/dev/null
-cp -p "$ADDON_DIR/$ADDON/settings/settings.json"    "$PUBLIC_DIR/settings/settings.json" 2>/dev/null
+# settings.json is a symlink to the persistent JFFS copy — one source of truth,
+# no sync needed. Any write via the public path (save_settings.sh step 5, etc.)
+# goes directly to the JFFS file. Recreated here on every boot since /www is tmpfs.
+create_link "$MERV_BASE/settings/settings.json" "$PUBLIC_DIR/settings/settings.json"
 # Note: hw_settings.json has been consolidated into settings/settings.json.
 # The SPA now reads the Hardware block from settings/settings.json directly;
 # keep the consolidated settings.json published for the UI.
@@ -1355,6 +1359,7 @@ fi
 create_link "$TMP_DIR/logs/cli_output.log"              "$PUBLIC_DIR/tmp/logs/cli_output.json"
 create_link "$TMP_DIR/logs/vlan_manager.log"            "$PUBLIC_DIR/tmp/logs/vlan_manager.json"
 create_link "$TMP_DIR/results/vlan_clients.json"        "$PUBLIC_DIR/tmp/results/vlan_clients.json"
+# settings.json symlink is created above with the static asset copies
 
 logger -t "$ADDON" "Symlinks created successfully"
 echo "[install] Runtime symlinks created"
