@@ -12,7 +12,7 @@
 #  |__/     |__/ \_______/|__/          \_/    |________/|__/  |__/|__/  \__/  #
 #                                                                              #
 # ============================================================================ #
-#                - File: update_mervlan.sh || version="0.59"                   #
+#                - File: update_mervlan.sh || version="0.60"                   #
 # ============================================================================ #
 # - Purpose:    Update the MerVLAN addon in-place while preserving user data.  #
 #                                                                              #
@@ -165,6 +165,7 @@ functions/update_mervlan.sh
 settings/settings.json
 settings/var_settings.sh
 settings/log_settings.sh
+settings/lib_action_ack.sh
 settings/lib_json.sh
 settings/lib_ssh.sh
 templates/mervlan_templates.sh
@@ -1097,6 +1098,7 @@ for rel_path in \
 	"settings/log_settings.sh" \
 	"templates/mervlan_templates.sh" \
 	"settings/lib_debug.sh" \
+	"settings/lib_action_ack.sh" \
 	"settings/lib_json.sh" \
 	"settings/lib_ssh.sh" \
 	"settings/lib_ssid_filter.sh" \
