@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!-- index.html version="0.53.15" -->
+  <!-- index.html version="0.53.17-dev" -->
   <meta charset="utf-8" />
   <title>MerVLAN Manager</title>
   <link rel="stylesheet" href="vlan_form_style.css" />
@@ -94,6 +94,81 @@
       color: #ff8a8a;
     }
 
+    .update-exit-warning {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      background: rgba(255, 138, 60, 0.12);
+      border: 1px solid rgba(255, 138, 60, 0.4);
+      border-radius: 4px;
+      font-size: 0.88rem;
+      margin-bottom: 4px;
+    }
+
+    .update-exit-warning span { flex: 1; }
+
+    .update-btn--warn {
+      border-color: rgba(255, 138, 60, 0.6) !important;
+      color: #ffaa6b !important;
+    }
+
+    .update-downgrade-warn {
+      color: #ffaa6b;
+      font-size: 0.88rem;
+      margin: 4px 0 0;
+    }
+
+    .update-changelog-pre {
+      font-family: monospace;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      padding: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      color: #ccc;
+      margin: 4px 0 0;
+    }
+
+    .update-complete-msg {
+      font-size: 0.88rem;
+      color: #7bd77b;
+      margin-top: 6px;
+    }
+
+    .custom-branch-input {
+      width: 100%;
+      box-sizing: border-box;
+      background: #2a2a2a;
+      color: #eee;
+      border: 1px solid #555;
+      border-radius: 3px;
+      padding: 3px 6px;
+      font-size: 0.88rem;
+      text-transform: none;
+    }
+
+    .custom-branch-input:focus {
+      outline: 1px solid #6cbaf5;
+      border-color: #6cbaf5;
+    }
+
+    .custom-branch-devwarn {
+      color: #ff8a8a;
+      font-size: 0.82rem;
+      margin: 2px 0 0;
+    }
+
+    .channel-capability-hint {
+      font-size: 0.82rem;
+      color: #888;
+      margin: 3px 0 0;
+    }
+
     #unsupportedModelModal .modal__actions {
       justify-content: center;
       gap: 12px;
@@ -181,32 +256,15 @@
       </div>
       </form>
 
-      <!-- General Settings Panel -->
+      <!-- Preset Configuration Panel -->
       <div class="form-box controls-panel">
-        <h2>General Settings</h2>
-        <div class="button-row button-row-toggles">
-          <div class="gen-toggle-group">
-            <select id="stpToggle" name="ENABLE_STP" class="input_option" onchange="markEdited('ENABLE_STP')" title="STP: enable Spanning Tree Protocol with deterministic bridge MACs">
-              <option value="0">STP: Off</option>
-              <option value="1">STP: On</option>
-            </select>
-            <span id="statusENABLE_STP" class="status gen-status" title="❌ Missing/invalid value">❌</span>
-          </div>
-          <div class="gen-toggle-group">
-            <select id="dryRunToggle" name="DRY_RUN" class="input_option" onchange="markEdited('DRY_RUN')" title="Dry run: yes=simulate only, no changes">
-              <option value="no">Dry Run: Off</option>
-              <option value="yes">Dry Run: On</option>
-            </select>
-            <span id="statusDRY_RUN" class="status gen-status" title="❌ Missing/invalid value">❌</span>
-          </div>
-          <div class="gen-toggle-group">
-            <select id="ensToggle" name="ENABLE_NATIVE_SSID" class="input_option" onchange="markEdited('ENABLE_NATIVE_SSID')" title="Enable tagging of native SSIDs. Disabled by default and might break tagging on some devices if set to ON. Using Guest SSIDs instead is highly recommended">
-              <option value="0">ENS: Off</option>
-              <option value="1">ENS: On</option>
-            </select>
-            <span id="statusENABLE_NATIVE_SSID" class="status gen-status" title="❌ Missing/invalid value">❌</span>
-          </div>
-        </div>
+        <h2>Preset Configuration</h2>
+        <!-- STP / DRY_RUN / ENS are controlled via the Settings modal.
+             Keep hidden selects here so fillFormFromSettings / formToSettingsJSON
+             continue to work without any changes. -->
+        <select id="stpToggle"   name="ENABLE_STP"         style="display:none;"><option value="0">0</option><option value="1">1</option></select>
+        <select id="dryRunToggle" name="DRY_RUN"            style="display:none;"><option value="no">no</option><option value="yes">yes</option></select>
+        <select id="ensToggle"   name="ENABLE_NATIVE_SSID"  style="display:none;"><option value="0">0</option><option value="1">1</option></select>
         <div class="button-row button-row-actions">
           <button type="button" class="button_gen" onclick="uploadSettingsAndSave()" title="Upload settings.json and save (no CGI)">Save</button>
           <button type="button" class="button_gen" onclick="loadSettings()" title="Load current values">Load</button>
@@ -214,18 +272,14 @@
         </div>
       </div>
 
-        <!-- VLAN Controls -->
+        <!-- MerVLAN Deployment -->
         <div class="form-box controls-panel">
-          <h2>Controls</h2>
+          <h2>MerVLAN Deployment</h2>
       <div class="button-row button-row-main">
         <button type="button" class="button_gen" onclick="handleApplyClick(this)" title="Run vlan_manager locally">Apply VLAN</button>
         <button type="button" class="button_gen" id="syncNodesBtn" onclick="triggerAction('sync_vlanmgr', this, 'Sync Nodes')" title="Sync settings to nodes and apply">Sync Nodes</button>
         <button type="button" class="button_gen" id="sshInstallBtn" onclick="showSSHKeyModal()" title="Show SSH key installation options">SSH Key Install</button>          </div>
-      <div class="button-row button-row-service">
-        <button type="button" class="button_gen" onclick="triggerAction('enableservice_vlanmgr', this, 'Enable Service')" title="Enable auto-start on boot">Enable Service</button>
-        <button type="button" class="button_gen" onclick="triggerAction('disableservice_vlanmgr', this, 'Disable Service')" title="Disable auto-start on boot">Disable Service</button>
-        <button type="button" class="button_gen" onclick="triggerAction('checkservice_vlanmgr', this, 'Service Status')" title="Service enabled on boot?">Service Status</button>
-          </div>
+
         </div>
 
       <!-- Legend -->
@@ -240,17 +294,18 @@
           </div>
         </div>
       </div>
-        <!-- Experimental toggle row -->
+        <!-- Settings / experimental row -->
         <div class="form-box form-box--experimental">
-          <label class="experimental-toggle">
-            <input
-              type="checkbox"
-              id="experimentalToggle"
-              name="EXPERIMENTAL"
-              title="Enable new features that may or may not be stable. You need to save after enabling this."
-            >
-            <span>Enable experimental features</span>
-          </label>
+          <!-- Hidden field keeps EXPERIMENTAL wired into the normal save pipeline -->
+          <input type="hidden" id="experimentalToggle" name="EXPERIMENTAL" value="0">
+
+          <button
+            type="button"
+            class="experimental-version"
+            id="serviceSettingsBtn"
+            title="Service and addon settings"
+            onclick="showServiceSettingsModal()"
+          >Settings</button>
           <button
             type="button"
             class="experimental-version"
@@ -394,25 +449,25 @@
   <div id="vlanManagerModal" class="modal modal--compact">
     <div class="modal__header">
       <h3 class="modal__title">Nodes Detected!</h3>
-      <button class="modal__close" onclick="document.getElementById('vlanManagerModal').style.display='none'">×</button>
+      <button class="modal__close" onclick="closeVlanManagerModal()">×</button>
     </div>
 
     <div class="modal__body">
       <p class="modal__intro">Choose how to run the VLAN Manager:</p>
       <div class="modal__section vlan-options">
         <button type="button" class="button_gen" onclick="runVlanManagerLocal()">
-          <div class="vlan-option__title">Run VLAN Manager (Local Only)</div>
-          <div class="vlan-option__subtitle">Apply VLAN configuration to this router only</div>
+          <div class="vlan-option__title">Local Router Only</div>
+          <div class="vlan-option__subtitle">Apply to this router only</div>
         </button>
 
         <button type="button" class="button_gen" onclick="runVlanManagerWithNodes()">
-          <div class="vlan-option__title">Run VLAN Manager + Nodes</div>
-          <div class="vlan-option__subtitle">Apply VLAN configuration to this router and all configured nodes</div>
+          <div class="vlan-option__title">Router + Nodes</div>
+          <div class="vlan-option__subtitle">Apply to this router and all nodes</div>
         </button>
 
         <button type="button" class="button_gen" onclick="runVlanManagerOnlyNodes()">
-          <div class="vlan-option__title">Run VLAN Manager on Nodes Only</div>
-          <div class="vlan-option__subtitle">Apply VLAN configuration to all configured nodes only</div>
+          <div class="vlan-option__title">Nodes Only</div>
+          <div class="vlan-option__subtitle">Apply to configured nodes onl</div>
         </button>
       </div>
     </div>
@@ -431,12 +486,21 @@
         <strong id="currentVersionText">v0.00</strong>
       </p>
 
+      <!-- Exit-during-update confirmation bar -->
+      <div id="updateExitWarning" class="update-exit-warning" style="display:none;">
+        <span>Update is in progress. Really exit?</span>
+        <button type="button" class="button_gen" onclick="dismissUpdateExitWarning()">Stay</button>
+        <button type="button" class="button_gen update-btn--warn" onclick="forceCloseVersionModal()">Exit anyway</button>
+      </div>
+
       <div class="modal__section">
         <label for="versionChannelSelect"><strong>Channel:</strong></label>
-        <select id="versionChannelSelect" class="input_option">
-          <option value="main">Stable (main)</option>
+        <select id="versionChannelSelect" class="input_option" onchange="onChannelSelectChange()">
+          <option value="main">Stable (releases)</option>
+          <option value="main_direct">Stable (latest only)</option>
           <option value="dev">Development (dev)</option>
         </select>
+        <p id="channelCapabilityHint" class="channel-capability-hint"></p>
       </div>
 
       <div class="modal__section">
@@ -451,18 +515,42 @@
         <span id="updateStatusText" class="muted" style="margin-left:8px;"></span>
       </div>
 
+      <!-- Stable: release version picker (populated after check) -->
+      <div class="modal__section" id="releaseSelectSection" style="display:none;">
+        <label for="releaseSelect"><strong>Version:</strong></label>
+        <select id="releaseSelect" class="input_option" onchange="onReleaseSelectChange()"></select>
+      </div>
+
+      <!-- Custom branch input (shown when custom branch option selected) -->
+      <div class="modal__section" id="customBranchSection" style="display:none;">
+        <input type="text" id="customBranchInput" class="custom-branch-input" placeholder="e.g. dev-test1" maxlength="100" oninput="onCustomBranchInput()">
+        <p class="custom-branch-devwarn">&#x26A0; Development use only. Not a supported update path. May break your install.</p>
+      </div>
+
+      <!-- Comparison text + downgrade warning -->
       <div class="modal__section" id="updateDetailsSection" style="display:none;">
-        <p>
-          Latest version on
-          <span id="latestChannelLabel">main</span>:
-          <strong id="latestVersionText">v0.00</strong>
-        </p>
         <p id="updateComparisonText"></p>
+        <p id="downgradeWarning" class="update-downgrade-warn" style="display:none;">
+          &#x26A0; This version is older than your current install. Downgrading may cause issues &#x2014; proceed with caution.
+        </p>
+      </div>
+
+      <!-- Changelog toggle button -->
+      <div class="modal__section" id="changelogToggleSection" style="display:none;">
+        <button type="button" class="button_gen" id="toggleChangelogBtn" onclick="toggleChangelogDisplay()">Show Changelog</button>
+      </div>
+
+      <!-- Inline changelog content -->
+      <div id="changelogSection" style="display:none;">
+        <pre id="changelogContent" class="update-changelog-pre"></pre>
       </div>
 
       <!-- One-line update log output -->
       <div class="modal__section modal__section--log" id="updateLogSection" style="display:none;">
         <div id="updateLogLine" class="update-log-line" aria-live="polite"></div>
+        <div id="updateCompleteMessage" class="update-complete-msg" style="display:none;">
+          Update complete &#x2014; please refresh your browser to load the new version.
+        </div>
       </div>
     </div>
 
@@ -475,6 +563,15 @@
         style="display:none;"
       >
         Update now
+      </button>
+      <button
+        type="button"
+        class="button_gen"
+        id="refreshNowBtn"
+        onclick="window.location.reload()"
+        style="display:none;"
+      >
+        Refresh Now
       </button>
     </div>
   </div>
@@ -661,6 +758,186 @@
     </div>
   </div>
 
+  <!-- ======== Service Settings Modal ======== -->
+  <style>
+    /* ---- pill toggle switch ---- */
+    .merv-toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+    .merv-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .merv-toggle__track {
+      position: absolute; inset: 0; cursor: pointer;
+      background: #555; border-radius: 24px;
+      transition: background 0.2s;
+    }
+    .merv-toggle__track::before {
+      content: ""; position: absolute;
+      width: 18px; height: 18px; left: 3px; bottom: 3px;
+      background: #fff; border-radius: 50%;
+      transition: transform 0.18s;
+    }
+    .merv-toggle input:checked + .merv-toggle__track { background: #4caf50; }
+    .merv-toggle input:checked + .merv-toggle__track::before { transform: translateX(20px); }
+    .merv-toggle input:disabled + .merv-toggle__track { opacity: 0.4; cursor: not-allowed; }
+
+    /* ---- modal rows ---- */
+    .svc-settings-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; padding: 11px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .svc-settings-row:last-of-type { border-bottom: none; }
+    .svc-settings-label { display: flex; flex-direction: column; gap: 3px; }
+    .svc-settings-label > span:first-child { font-size: 0.95em; color: #ddd; }
+    .svc-settings-hint { font-size: 0.81em; color: #777; line-height: 1.35; }
+
+    /* ---- status bar and detail panel ---- */
+    .svc-settings-status {
+      margin-top: 12px; padding: 7px 10px;
+      background: rgba(108,186,245,0.07);
+      border: 1px solid rgba(108,186,245,0.18);
+      border-radius: 4px;
+      font-size: 0.87em; color: #aaa;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .svc-status-hint { font-size: 0.78em; color: #555; white-space: nowrap; }
+    .svc-refresh-btn { padding: 1px 7px; font-size: 1em; line-height: 1.4; flex-shrink: 0; }
+
+    .svc-status-detail {
+      margin-top: 6px; padding: 8px 10px;
+      background: rgba(108,186,245,0.04);
+      border: 1px solid rgba(108,186,245,0.10);
+      border-radius: 4px;
+    }
+    .svc-status-ts  { font-size: 0.78em; color: #555; margin-bottom: 5px; }
+    .svc-status-row {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+      padding: 3px 0; font-size: 0.85em;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+    .svc-status-row:first-of-type { border-top: none; }
+    .svc-unit-label { font-weight: 600; color: #bbb; min-width: 46px; }
+    .svc-unit-hw    { color: #888; }
+    .svc-unit-ip    { color: #666; font-size: 0.88em; }
+    .svc-dot-on     { color: #4caf50; }
+    .svc-dot-off    { color: #555; }
+    .svc-unit-mac   { font-size: 0.82em; margin-left: auto; }
+    .svc-transaction-status { margin-top: 8px; min-height: 1.35em; font-size: 0.85em; color: #aaa; }
+    .svc-transaction-status.is-success { color: #7bd77b; }
+    .svc-transaction-status.is-warning { color: #ffb432; }
+    .svc-transaction-status.is-error { color: #ff8a8a; }
+
+    /* ---- paused indicator on Settings button ---- */
+    #serviceSettingsBtn.is-paused {
+      border-color: rgba(255,180,50,0.75);
+      color: #ffb432;
+    }
+    #serviceSettingsBtn.is-paused::after {
+      content: " \25CF";
+      font-size: 0.65em;
+      vertical-align: middle;
+      color: #ffb432;
+    }
+  </style>
+
+  <div id="serviceSettingsModal" class="modal" style="display:none;">
+    <div class="modal__header">
+      <h3 class="modal__title">Settings</h3>
+      <button class="modal__close" onclick="closeServiceSettingsModal()">&#x2715;</button>
+    </div>
+    <div class="modal__body">
+
+      <!-- STP -->
+      <div class="svc-settings-row">
+        <div class="svc-settings-label">
+          <span>Enable STP</span>
+          <span class="svc-settings-hint">Spanning Tree Protocol with deterministic bridge MACs</span>
+        </div>
+        <label class="merv-toggle" title="Enable or disable STP">
+          <input type="checkbox" id="svcToggleSTP" onchange="markSvcSettingsDirty()">
+          <span class="merv-toggle__track"></span>
+        </label>
+      </div>
+
+      <!-- Dry Run -->
+      <div class="svc-settings-row">
+        <div class="svc-settings-label">
+          <span>Dry Run</span>
+          <span class="svc-settings-hint">Simulate only — no changes applied to the router</span>
+        </div>
+        <label class="merv-toggle" title="Enable or disable dry run mode">
+          <input type="checkbox" id="svcToggleDryRun" onchange="markSvcSettingsDirty()">
+          <span class="merv-toggle__track"></span>
+        </label>
+      </div>
+
+      <!-- ENS -->
+      <div class="svc-settings-row">
+        <div class="svc-settings-label">
+          <span>Enable Native SSID (ENS)</span>
+          <span class="svc-settings-hint">Tag native SSIDs. Off by default — may break tagging on some devices. Use Guest SSIDs instead.</span>
+        </div>
+        <label class="merv-toggle" title="Enable or disable native SSID tagging">
+          <input type="checkbox" id="svcToggleENS" onchange="markSvcSettingsDirty()">
+          <span class="merv-toggle__track"></span>
+        </label>
+      </div>
+
+      <!-- Apply on Boot -->
+      <div class="svc-settings-row">
+        <div class="svc-settings-label">
+          <span>Apply on Boot</span>
+          <span class="svc-settings-hint">Run MerVLAN automatically at router startup and enable the cron health check</span>
+        </div>
+        <label class="merv-toggle" title="Enable or disable MerVLAN auto-start on boot">
+          <input type="checkbox" id="svcToggleBoot" onchange="markSvcSettingsDirty()">
+          <span class="merv-toggle__track"></span>
+        </label>
+      </div>
+
+      <!-- Pause Event Reactions -->
+      <div class="svc-settings-row">
+        <div class="svc-settings-label">
+          <span>Pause Event Reactions</span>
+          <span class="svc-settings-hint">Suspend router-triggered rebuilds during bulk ASUS WiFi changes to avoid repeated rebuilds. Not needed for single changes. Disable to resume normal operation. If nodes are used, run a node sync whenever this setting is changed. Cleared automatically on reboot.</span>
+        </div>
+        <label class="merv-toggle" title="Pause router-event-driven rebuilds (UI buttons still work)">
+          <input type="checkbox" id="svcTogglePause" onchange="markSvcSettingsDirty()">
+          <span class="merv-toggle__track"></span>
+        </label>
+      </div>
+
+      <!-- Experimental Features -->
+      <div class="svc-settings-row">
+        <div class="svc-settings-label">
+          <span>Experimental Features</span>
+          <span class="svc-settings-hint">Enable new features that may not be stable. A Save is performed automatically when applying.</span>
+        </div>
+        <label class="merv-toggle" title="Enable or disable experimental features">
+          <input type="checkbox" id="svcToggleExperimental" onchange="markSvcSettingsDirty()">
+          <span class="merv-toggle__track"></span>
+        </label>
+      </div>
+
+      <!-- Service status (read-only) with refresh -->
+      <div class="svc-settings-status">
+        <span id="svcBootStatusLine" style="flex:1;">Boot service: —</span>
+        <span class="svc-status-hint">Refresh for full status</span>
+        <button type="button" class="button_gen svc-refresh-btn"
+          id="svcStatusRefreshBtn"
+          onclick="refreshServiceStatus(this)"
+          title="Run Service Status check — results shown here and in CLI log">&#x27F3;</button>
+      </div>
+      <!-- Full status detail panel: hidden until ⟳ is pressed -->
+      <div id="svcStatusDetail" class="svc-status-detail" style="display:none;"></div>
+      <div id="svcTransactionStatus" class="svc-transaction-status" role="status" aria-live="polite"></div>
+
+    </div>
+    <div class="modal__actions">
+      <button type="button" class="button_gen" id="svcSettingsApplyBtn"
+        onclick="applyServiceSettings()" disabled>Apply</button>
+      <button type="button" class="button_gen" id="svcSettingsCancelBtn" onclick="closeServiceSettingsModal()">Cancel</button>
+    </div>
+  </div>
+
   <!-- ======== Status & validation (SSID/VLAN/NODE ticks) ======== -->
 
 <script>
@@ -717,7 +994,9 @@
             throw new Error("HTTP " + resp.status);
           }
           const text = await resp.text();
-          const match = text.match(/^mervlan\s+v?([0-9.]+)/im);
+          // Fallback: numeric versions only, without suffixes such as "-dev"
+          // const match = text.match(/^mervlan\s+v?([0-9.]+)/im);
+          const match = text.match(/^mervlan\s+v?([0-9]+(?:\.[0-9]+)*(?:-[a-z0-9.-]+)?)/im);
           if (!match || !match[1]) {
             throw new Error("No version line found in changelog");
           }
@@ -798,6 +1077,8 @@
         function flattenStructuredSettingsPayload(data) {
           const flat = {};
           const general = ensurePlainObject(data.General);
+          flat.BOOT_ENABLED = stringOrDefault(general.BOOT_ENABLED, "0");
+          flat.PAUSE = stringOrDefault(general.PAUSE, "off");
           flat.ENABLE_STP = stringOrDefault(general.ENABLE_STP, "0");
           flat.DRY_RUN = stringOrDefault(general.DRY_RUN, "yes");
           flat.EXPERIMENTAL = stringOrDefault(general.EXPERIMENTAL, "0");
@@ -969,6 +1250,7 @@
             General: {
               _description: "Global addon flags and behavior toggles",
               BOOT_ENABLED: "0",
+              PAUSE: "off",
               DRY_RUN: "yes",
               ENABLE_STP: "0",
               EXPERIMENTAL: "0",
@@ -1014,6 +1296,8 @@
         function expandFlatSettingsToStructured(flat, source) {
           const target = cloneStructuredSettingsPayload(source) || structuredSettingsDefaultsTemplate();
           const general = target.General = ensurePlainObject(target.General);
+          general.BOOT_ENABLED = stringOrDefault(flat.BOOT_ENABLED, general.BOOT_ENABLED ?? "0");
+          general.PAUSE = stringOrDefault(flat.PAUSE, general.PAUSE ?? "off");
           general.ENABLE_STP = stringOrDefault(flat.ENABLE_STP, general.ENABLE_STP ?? "0");
           general.DRY_RUN = stringOrDefault(flat.DRY_RUN, general.DRY_RUN ?? "yes");
           general.EXPERIMENTAL = stringOrDefault(flat.EXPERIMENTAL, general.EXPERIMENTAL ?? "0");
@@ -2252,7 +2536,10 @@ function showTooltip() {
 
     function isExperimentalEnabled(){
       const expToggle = document.getElementById("experimentalToggle");
-      return !!(expToggle && expToggle.checked);
+      if (!expToggle) return false;
+      // Hidden input (current): read .value; checkbox (legacy): read .checked
+      if (expToggle.type === 'checkbox') return expToggle.checked;
+      return expToggle.value === '1';
     }
 
     function updateExperimentalVisibility(){
@@ -2735,6 +3022,7 @@ function showTooltip() {
         document.querySelector('.container'),
         cliPanel && cliPanel.classList.contains('expanded') ? cliPanel.querySelector('.cli-shell') : null,
         document.getElementById('advancedOverrideModal'),
+        document.getElementById('serviceSettingsModal'),
         document.getElementById('sshKeyModal'),
         document.getElementById('unsupportedModelModal'),
         document.getElementById('versionModal')
@@ -2833,6 +3121,8 @@ function showTooltip() {
       setNodeCollapse(false);
       const experimentalToggle = document.getElementById("experimentalToggle");
       if(experimentalToggle){
+        // Works for both hidden input (value) and checkbox (checked)
+        experimentalToggle.value   = '0';
         experimentalToggle.checked = false;
       }
       // Clear SSIDassign checkboxes (reset to MAIN only)
@@ -3013,7 +3303,8 @@ function showTooltip() {
           isModalVisibleById('sshKeyModal') ||
           isModalVisibleById('versionModal') ||
           isModalVisibleById('unsupportedModelModal') ||
-          isModalVisibleById('advancedOverrideModal')
+          isModalVisibleById('advancedOverrideModal') ||
+          isModalVisibleById('serviceSettingsModal')
         );
       }
       function setCliState(expand){
@@ -3110,7 +3401,11 @@ function showTooltip() {
           // settings.json is stored under the settings/ directory
           SETTINGS: "settings/settings.json",
           // clients overview JSON
-          CLIENTS_JSON: "tmp/results/vlan_clients.json"
+          CLIENTS_JSON: "tmp/results/vlan_clients.json",
+          // service status JSON written by mervlan_boot.sh status (tmpfs, not persistent)
+          SERVICE_STATUS: "tmp/results/service_status.json",
+          // correlated completion result for verified backend actions
+          ACTION_RESULT: "tmp/results/action_result.json"
         };
 
     function isAtBottom(el){ return el.scrollTop + el.clientHeight >= el.scrollHeight - 10; }
@@ -3189,6 +3484,7 @@ function toggleCliFullsize() {
 
     let updateLogTimer = null;
     let lastUpdateLogLine = "";
+    let _updateTimeoutId = null;
 
     function setUpdateStatus(text, color) {
       const statusEl = document.getElementById("updateStatusText");
@@ -3265,6 +3561,15 @@ function toggleCliFullsize() {
           isUpdateInProgress = false;
           stopUpdateSpinner("Update completed", "#7bd77b");
           stopUpdateLogPolling();
+          const completeMsg = document.getElementById("updateCompleteMessage");
+          if (completeMsg) completeMsg.style.display = "block";
+          const refreshNowBtn = document.getElementById("refreshNowBtn");
+          if (refreshNowBtn) refreshNowBtn.style.display = "inline-block";
+        } else if (lines.slice(-Math.min(10, lines.length)).some(line => /Update failed in stage:|update.*fail/i.test(line))) {
+          logLineEl.classList.add("update-log-line--error");
+          isUpdateInProgress = false;
+          stopUpdateSpinner("Update failed", "#ff8a8a");
+          stopUpdateLogPolling();
         }
       } catch (e) {
         // optional: ignore errors
@@ -3286,12 +3591,31 @@ function toggleCliFullsize() {
         clearInterval(updateLogTimer);
       }
       updateLogTimer = setInterval(pollUpdateLogOnce, 1500);
+
+      // Safety timeout: stop spinner after 5 minutes with no success/failure
+      if (_updateTimeoutId) clearTimeout(_updateTimeoutId);
+      _updateTimeoutId = setTimeout(() => {
+        if (isUpdateInProgress) {
+          isUpdateInProgress = false;
+          stopUpdateSpinner("Timed out", "#ffaa6b");
+          stopUpdateLogPolling();
+          const logLineEl2 = document.getElementById("updateLogLine");
+          if (logLineEl2) {
+            logLineEl2.textContent = "Update timed out \u2014 check the CLI log for details.";
+            logLineEl2.classList.add("update-log-line--error");
+          }
+        }
+      }, 300000);
     }
 
     function stopUpdateLogPolling() {
       if (updateLogTimer) {
         clearInterval(updateLogTimer);
         updateLogTimer = null;
+      }
+      if (_updateTimeoutId) {
+        clearTimeout(_updateTimeoutId);
+        _updateTimeoutId = null;
       }
     }
 
@@ -4165,6 +4489,511 @@ function triggerAction(actionScriptName, button, description) {
     });
 }
 
+    // ======================================================================= //
+    // SERVICE SETTINGS MODAL                                                   //
+    // ======================================================================= //
+
+    // Snapshot of values when the modal was opened — used to diff on Apply
+    const SERVICE_SETTINGS_DEFINITIONS = Object.freeze([
+      {
+        key: 'ENABLE_STP', controlId: 'svcToggleSTP', hiddenControlId: 'stpToggle', kind: 'setting', defaultValue: '0',
+        readControl: el => el.checked ? '1' : '0', writeControl: (el, value) => { el.checked = value === '1'; }
+      },
+      {
+        key: 'DRY_RUN', controlId: 'svcToggleDryRun', hiddenControlId: 'dryRunToggle', kind: 'setting', defaultValue: 'yes',
+        readControl: el => el.checked ? 'yes' : 'no', writeControl: (el, value) => { el.checked = value === 'yes'; }
+      },
+      {
+        key: 'ENABLE_NATIVE_SSID', controlId: 'svcToggleENS', hiddenControlId: 'ensToggle', kind: 'setting', defaultValue: '0',
+        readControl: el => el.checked ? '1' : '0', writeControl: (el, value) => { el.checked = value === '1'; }
+      },
+      {
+        key: 'BOOT_ENABLED', controlId: 'svcToggleBoot', kind: 'action', ownership: 'action', defaultValue: '0',
+        readControl: el => el.checked ? '1' : '0', writeControl: (el, value) => { el.checked = value === '1'; },
+        action: {
+          order: 100,
+          resolveAction: value => value === '1' ? 'enableservice_vlanmgr' : 'disableservice_vlanmgr',
+          progress: value => value === '1' ? 'Enabling boot service…' : 'Disabling boot service…',
+          expectedResult: value => ({ BOOT_ENABLED: value }),
+          timeoutMs: 120000
+        }
+      },
+      {
+        key: 'PAUSE', controlId: 'svcTogglePause', kind: 'setting', defaultValue: 'off',
+        readControl: el => el.checked ? 'on' : 'off', writeControl: (el, value) => { el.checked = value === 'on'; }
+      },
+      {
+        key: 'EXPERIMENTAL', controlId: 'svcToggleExperimental', hiddenControlId: 'experimentalToggle', kind: 'setting', defaultValue: '0',
+        readControl: el => el.checked ? '1' : '0', writeControl: (el, value) => { el.checked = value === '1'; }
+      }
+    ]);
+
+    let _svcSnapshot = null;
+    let _svcTransactionActive = false;
+    // Last successful status check result — persists for the page session so
+    // reopening the modal still shows the previous check. Cleared on page reload.
+    let _svcLastStatusData = null;
+
+    function getServiceSettingValue(definition, source = CURRENT_SETTINGS_CACHE) {
+      const raw = source && source[definition.key];
+      return raw == null || raw === '' ? definition.defaultValue : String(raw);
+    }
+
+    function writeServiceSettingControl(definition, value) {
+      const control = document.getElementById(definition.controlId);
+      if (control) definition.writeControl(control, String(value));
+    }
+
+    function syncServiceSettingsControls(source = CURRENT_SETTINGS_CACHE) {
+      SERVICE_SETTINGS_DEFINITIONS.forEach(definition => {
+        const value = getServiceSettingValue(definition, source);
+        writeServiceSettingControl(definition, value);
+        if (definition.hiddenControlId) {
+          const hidden = document.getElementById(definition.hiddenControlId);
+          if (hidden) hidden.value = value;
+        }
+      });
+    }
+
+    function readServiceSettingsControls() {
+      const values = {};
+      SERVICE_SETTINGS_DEFINITIONS.forEach(definition => {
+        const control = document.getElementById(definition.controlId);
+        values[definition.key] = control ? String(definition.readControl(control)) : getServiceSettingValue(definition);
+      });
+      return values;
+    }
+
+    function captureServiceSettingsSnapshot(source = CURRENT_SETTINGS_CACHE) {
+      const snapshot = {};
+      SERVICE_SETTINGS_DEFINITIONS.forEach(definition => {
+        snapshot[definition.key] = getServiceSettingValue(definition, source);
+      });
+      return snapshot;
+    }
+
+    function calculateServiceSettingsChanges(before, after) {
+      return SERVICE_SETTINGS_DEFINITIONS
+        .filter(definition => String(before[definition.key]) !== String(after[definition.key]))
+        .map(definition => ({ key: definition.key, previous: String(before[definition.key]), desired: String(after[definition.key]), definition }));
+    }
+
+    function validateServiceSettings(values) {
+      const errors = [];
+      SERVICE_SETTINGS_DEFINITIONS.forEach(definition => {
+        if (typeof definition.validate !== 'function') return;
+        const result = definition.validate(values[definition.key], { values, definition });
+        if (result && result.ok === false) errors.push(result.message || `Invalid value for ${definition.key}`);
+      });
+      return errors;
+    }
+
+    function buildServiceSettingsTransaction(changes) {
+      const stages = [];
+      const settingChanges = changes.filter(change => change.definition.kind === 'setting');
+      if (settingChanges.length) stages.push({ type: 'settings-save', changes: settingChanges });
+      const pending = new Map(
+        changes.filter(change => change.definition.kind === 'action').map(change => [change.key, change])
+      );
+      while (pending.size) {
+        const ready = Array.from(pending.values()).filter(change => {
+          const dependencies = change.definition.action?.dependsOn || [];
+          return dependencies.every(key => !pending.has(key));
+        }).sort((a, b) => (a.definition.action?.order || 0) - (b.definition.action?.order || 0));
+        if (!ready.length) {
+          throw new Error('Service settings action dependencies contain a cycle.');
+        }
+        ready.forEach(change => {
+          stages.push({ type: 'verified-action', change });
+          pending.delete(change.key);
+        });
+      }
+      return stages;
+    }
+
+    function setServiceTransactionStatus(message, state = '') {
+      const el = document.getElementById('svcTransactionStatus');
+      if (!el) return;
+      el.textContent = message || '';
+      el.classList.remove('is-success', 'is-warning', 'is-error');
+      if (state) el.classList.add('is-' + state);
+    }
+
+    function setServiceSettingsBusy(busy) {
+      _svcTransactionActive = busy;
+      SERVICE_SETTINGS_DEFINITIONS.forEach(definition => {
+        const control = document.getElementById(definition.controlId);
+        if (control) control.disabled = busy;
+      });
+      ['svcSettingsApplyBtn', 'svcSettingsCancelBtn', 'svcStatusRefreshBtn'].forEach(id => {
+        const control = document.getElementById(id);
+        if (control) control.disabled = busy;
+      });
+    }
+
+    function applySettingChangesToForm(changes) {
+      if (!CURRENT_SETTINGS_CACHE) CURRENT_SETTINGS_CACHE = {};
+      changes.forEach(change => {
+        CURRENT_SETTINGS_CACHE[change.key] = change.desired;
+        const hidden = change.definition.hiddenControlId ? document.getElementById(change.definition.hiddenControlId) : null;
+        if (hidden) hidden.value = change.desired;
+      });
+    }
+
+    function createActionRequestToken() {
+      let random = '';
+      try {
+        if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+          random = Array.from(window.crypto.getRandomValues(new Uint32Array(2))).map(n => n.toString(36)).join('');
+        }
+      } catch (_) {}
+      if (!random) random = Math.random().toString(36).slice(2);
+      return `merv-${Date.now()}-${random}`;
+    }
+
+    async function waitForVerifiedActionResult(requestToken, actionName, expectedResult, timeoutMs) {
+      const deadline = Date.now() + timeoutMs;
+      while (Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 750));
+        try {
+          const response = await fetch(PATHS.ACTION_RESULT + '?_=' + Date.now(), {
+            cache: 'no-store', headers: { Accept: 'application/json', 'Cache-Control': 'no-cache', Pragma: 'no-cache' }
+          });
+          if (!response.ok) continue;
+          const result = await response.json();
+          if (result.request_token !== requestToken || result.action !== actionName) continue;
+          if (result.status === 'error') return { ok: false, status: 'error', message: result.message || 'Backend action failed.', result };
+          const actual = result.result || {};
+          const mismatch = Object.keys(expectedResult || {}).find(key => String(actual[key] ?? '') !== String(expectedResult[key] ?? ''));
+          if (mismatch) return { ok: false, status: 'error', message: `Action result did not confirm ${mismatch}.`, result };
+          return {
+            ok: result.status === 'ok', status: result.status,
+            message: result.message || (result.status === 'partial' ? 'Action completed with warnings.' : 'Action completed.'),
+            warnings: Array.isArray(result.warnings) ? result.warnings : [], result
+          };
+        } catch (_) {}
+      }
+      return { ok: false, status: 'error', message: 'Timed out waiting for router acknowledgement.' };
+    }
+
+    async function executeVerifiedServiceAction(change) {
+      const actionSpec = change.definition.action;
+      const actionName = actionSpec.resolveAction(change.desired, change);
+      const expectedResult = actionSpec.expectedResult ? actionSpec.expectedResult(change.desired, change) : {};
+      const requestToken = createActionRequestToken();
+      const parentWin = window.parent;
+      if (!parentWin || typeof parentWin.MVM_triggerVerified !== 'function') {
+        return { ok: false, status: 'error', message: 'Verified parent action handler is unavailable.' };
+      }
+      appendCliText(`\n[${new Date().toLocaleString()}] Queued verified action: ${actionName}\n`, { scroll: 'force' });
+      const submitted = parentWin.MVM_triggerVerified(actionName, requestToken, {}, {
+        loading: false, skipRefresh: true, waitSec: 0, minLoadingMs: 0
+      });
+      if (submitted === false) {
+        return { ok: false, status: 'error', message: 'The parent page rejected or deduplicated the action request.' };
+      }
+      return waitForVerifiedActionResult(requestToken, actionName, expectedResult, actionSpec.timeoutMs || 30000);
+    }
+
+    async function refreshSettingsCacheFromDisk() {
+      const response = await fetch(PATHS.SETTINGS + '?_=' + Date.now(), {
+        cache: 'no-store', headers: { Accept: 'application/json', 'Cache-Control': 'no-cache', Pragma: 'no-cache' }
+      });
+      if (!response.ok) throw new Error('Could not refresh settings after the transaction (HTTP ' + response.status + ').');
+      const data = await response.json();
+      if (isStructuredSettingsPayload(data)) {
+        CURRENT_SETTINGS_STRUCTURED = data;
+        CURRENT_SETTINGS_SHAPE = 'sectioned';
+        CURRENT_SETTINGS_CACHE = flattenStructuredSettingsPayload(data);
+      } else {
+        CURRENT_SETTINGS_STRUCTURED = null;
+        CURRENT_SETTINGS_SHAPE = 'flat';
+        CURRENT_SETTINGS_CACHE = data;
+      }
+      return CURRENT_SETTINGS_CACHE;
+    }
+
+    function updatePauseIndicator() {
+      const btn = document.getElementById('serviceSettingsBtn');
+      if (!btn) return;
+      const paused = CURRENT_SETTINGS_CACHE && CURRENT_SETTINGS_CACHE['PAUSE'] === 'on';
+      btn.classList.toggle('is-paused', paused);
+    }
+
+    function updateBootStatusLineFromCache() {
+      const statusLine = document.getElementById('svcBootStatusLine');
+      if (!statusLine) return;
+      const bootOn = CURRENT_SETTINGS_CACHE && CURRENT_SETTINGS_CACHE['BOOT_ENABLED'] === '1';
+      statusLine.textContent = 'Boot service: ' + (bootOn ? '\u25CF enabled' : '\u25CB disabled');
+      statusLine.style.color = bootOn ? '#4caf50' : '#aaa';
+    }
+
+    async function showServiceSettingsModal() {
+      const modal = document.getElementById('serviceSettingsModal');
+      if (!modal) return;
+
+      // Always do a fresh load so all toggles reflect the last saved state on disk.
+      // deferFill=true refreshes CURRENT_SETTINGS_CACHE without touching the main form.
+      await loadSettings({ deferFill: true });
+
+      const cache = CURRENT_SETTINGS_CACHE || {};
+
+      // Keep hidden selects in sync with the fresh cache so the normal
+      // save pipeline (formToSettingsJSON) stays consistent.
+      syncServiceSettingsControls(cache);
+
+      // Populate modal toggles — all read from the fresh cache
+      // Snapshot initial state for dirty-diffing
+      _svcSnapshot = captureServiceSettingsSnapshot(cache);
+      setServiceSettingsBusy(false);
+      setServiceTransactionStatus('');
+
+      // Reset Apply button
+      const applyBtn = document.getElementById('svcSettingsApplyBtn');
+      if (applyBtn) applyBtn.disabled = true;
+
+      // Status line: only the persisted BOOT_ENABLED value — never stale.
+      // Press the ⟳ button in the modal to run a full status check (CLI log).
+      const statusLine = document.getElementById('svcBootStatusLine');
+      if (statusLine) {
+        const bootOn = cache['BOOT_ENABLED'] === '1';
+        statusLine.textContent = 'Boot service: ' + (bootOn ? '\u25CF enabled' : '\u25CB disabled');
+        statusLine.style.color = bootOn ? '#4caf50' : '#aaa';
+      }
+      // Restore the last status check result if one exists for this session,
+      // otherwise hide the panel (it's populated by pressing ⟳).
+      const detail = document.getElementById('svcStatusDetail');
+      if (detail) {
+        if (_svcLastStatusData) {
+          detail.innerHTML = renderServiceStatusHtml(_svcLastStatusData);
+          detail.style.display = '';
+        } else {
+          detail.style.display = 'none';
+          detail.innerHTML = '';
+        }
+      }
+
+      // Show modal — same pattern as all other modals
+      modal.style.display = 'block';
+      anchorModalToForm(modal);
+      scheduleHostIframeResize();
+
+      const overlay = document.getElementById('leftPanelOverlay');
+      if (overlay) {
+        overlay.classList.add('is-active');
+        overlay.style.display = 'block';
+        overlay.style.pointerEvents = 'auto';
+      }
+      const cliLatch = document.getElementById('cliLatch');
+      if (cliLatch) {
+        if (cliLatch.dataset.prevDisplay === undefined) {
+          cliLatch.dataset.prevDisplay = cliLatch.style.display || '';
+        }
+        cliLatch.style.display = 'none';
+      }
+    }
+
+    function closeServiceSettingsModal() {
+      if (_svcTransactionActive) {
+        setServiceTransactionStatus('Wait for the current settings transaction to finish.', 'warning');
+        return;
+      }
+      const modal = document.getElementById('serviceSettingsModal');
+      if (modal) {
+        modal.style.display = 'none';
+        releaseModalCentering(modal);
+        releaseAnchoredModal(modal);
+      }
+      const overlay = document.getElementById('leftPanelOverlay');
+      if (overlay) {
+        const cliPanelEl = document.getElementById('cliPanel');
+        const keepOverlay = cliPanelEl && cliPanelEl.classList.contains('expanded');
+        if (!keepOverlay) {
+          overlay.classList.remove('is-active');
+          overlay.style.display = 'none';
+          overlay.style.pointerEvents = 'none';
+        }
+      }
+      const cliLatch = document.getElementById('cliLatch');
+      if (cliLatch) {
+        const previous = cliLatch.dataset.prevDisplay;
+        cliLatch.style.display = previous !== undefined ? previous : '';
+        if (previous !== undefined) delete cliLatch.dataset.prevDisplay;
+      }
+      scheduleHostIframeResize();
+      _svcSnapshot = null;
+    }
+
+    function markSvcSettingsDirty() {
+      const applyBtn = document.getElementById('svcSettingsApplyBtn');
+      if (!applyBtn || _svcTransactionActive || !_svcSnapshot) return;
+      const changes = calculateServiceSettingsChanges(_svcSnapshot, readServiceSettingsControls());
+      applyBtn.disabled = changes.length === 0;
+      if (changes.length) setServiceTransactionStatus('');
+    }
+
+    async function applyServiceSettings() {
+      if (!_svcSnapshot || _svcTransactionActive) return;
+      const desiredValues = readServiceSettingsControls();
+      const validationErrors = validateServiceSettings(desiredValues);
+      if (validationErrors.length) {
+        setServiceTransactionStatus(validationErrors.join(' '), 'error');
+        return;
+      }
+
+      const changes = calculateServiceSettingsChanges(_svcSnapshot, desiredValues);
+      if (!changes.length) {
+        setServiceTransactionStatus('No settings changed.');
+        return;
+      }
+
+      let transaction;
+      try {
+        transaction = buildServiceSettingsTransaction(changes);
+      } catch (error) {
+        setServiceTransactionStatus(error.message || 'Could not build the settings transaction.', 'error');
+        return;
+      }
+      setServiceSettingsBusy(true);
+      stopPolling();
+      try {
+        for (let index = 0; index < transaction.length; index++) {
+          const stage = transaction[index];
+          const prefix = transaction.length > 1 ? `${index + 1}/${transaction.length} ` : '';
+          if (stage.type === 'settings-save') {
+            setServiceTransactionStatus(prefix + 'Saving settings…');
+            applySettingChangesToForm(stage.changes);
+            const saveResult = await uploadSettingsAndSave(null, {
+              clearForm: false,
+              reloadAfterSave: false,
+              restartPolling: false,
+              lockName: 'service-settings-save'
+            });
+            if (!saveResult || !saveResult.ok) {
+              throw new Error(saveResult?.error || 'Settings could not be confirmed on disk.');
+            }
+          } else if (stage.type === 'verified-action') {
+            const actionSpec = stage.change.definition.action;
+            setServiceTransactionStatus(prefix + actionSpec.progress(stage.change.desired, stage.change));
+            const actionResult = await executeVerifiedServiceAction(stage.change);
+            if (!actionResult.ok) {
+              const error = new Error(actionResult.message || 'Backend action failed.');
+              error.partial = actionResult.status === 'partial';
+              error.warnings = actionResult.warnings || [];
+              throw error;
+            }
+          }
+        }
+
+        setServiceTransactionStatus('Refreshing authoritative settings…');
+        await refreshSettingsCacheFromDisk();
+        _svcSnapshot = captureServiceSettingsSnapshot();
+        syncServiceSettingsControls();
+        updatePauseIndicator();
+        updateExperimentalVisibility();
+        updateBootStatusLineFromCache();
+        setServiceTransactionStatus('Settings applied.', 'success');
+        setServiceSettingsBusy(false);
+        closeServiceSettingsModal();
+      } catch (error) {
+        try { await refreshSettingsCacheFromDisk(); } catch (_) {}
+        if (CURRENT_SETTINGS_CACHE) {
+          _svcSnapshot = captureServiceSettingsSnapshot();
+          syncServiceSettingsControls();
+        }
+        updatePauseIndicator();
+        updateExperimentalVisibility();
+        updateBootStatusLineFromCache();
+        const warningText = error.warnings && error.warnings.length ? ' ' + error.warnings.join(' ') : '';
+        setServiceTransactionStatus((error.message || 'Settings transaction failed.') + warningText, error.partial ? 'warning' : 'error');
+        setServiceSettingsBusy(false);
+        markSvcSettingsDirty();
+      } finally {
+        startPolling();
+      }
+    }
+
+    async function refreshServiceStatus(btn) {
+      const statusLine = document.getElementById('svcBootStatusLine');
+      const detail     = document.getElementById('svcStatusDetail');
+      if (statusLine) { statusLine.textContent = 'Boot service: checking…'; statusLine.style.color = '#aaa'; }
+      if (detail)     { detail.style.display = 'none'; detail.innerHTML = ''; }
+
+      // Snapshot the current ts before triggering so we can detect when the
+      // new file has been written (ts changed = fresh data).
+      let _prevTs = '';
+      try {
+        const _pr = await fetch(PATHS.SERVICE_STATUS + '?_=' + Date.now(),
+          { cache: 'no-store', headers: { Accept: 'application/json', 'Cache-Control': 'no-cache', Pragma: 'no-cache' } });
+        if (_pr.ok) { const _pd = await _pr.json(); _prevTs = _pd.ts || ''; }
+      } catch (_) {}
+
+      // Fire the check action — full output still goes to CLI log as before
+      triggerAction('checkservice_vlanmgr', btn, 'Service Status');
+
+      // Poll until the file has a new ts (max 20s, 1s interval)
+      const _deadline = Date.now() + 20000;
+      let data = null;
+      while (Date.now() < _deadline) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+          const _r = await fetch(PATHS.SERVICE_STATUS + '?_=' + Date.now(),
+            { cache: 'no-store', headers: { Accept: 'application/json', 'Cache-Control': 'no-cache', Pragma: 'no-cache' } });
+          if (_r.ok) {
+            const _d = await _r.json();
+            if (_d.ts && _d.ts !== _prevTs) { data = _d; break; }
+          }
+        } catch (_) {}
+      }
+
+      if (data) {
+        if (statusLine && data.main) {
+          const bootOn = data.main.boot === 'enabled';
+          statusLine.textContent = 'Boot service: ' + (bootOn ? '\u25CF enabled' : '\u25CB disabled');
+          statusLine.style.color = bootOn ? '#4caf50' : '#aaa';
+        }
+        if (detail) {
+          _svcLastStatusData = data;
+          detail.innerHTML = renderServiceStatusHtml(data);
+          detail.style.display = '';
+        }
+      } else {
+        if (statusLine) {
+          statusLine.textContent = 'Boot service: \u2014  (see CLI log)';
+          statusLine.style.color = '#aaa';
+        }
+      }
+    }
+
+    function renderServiceStatusHtml(data) {
+      function dot(val, on) {
+        return '<span class="' + (on ? 'svc-dot-on' : 'svc-dot-off') + '" title="' + val + '">'
+          + (on ? '\u25CF' : '\u25CB') + '\u202f' + val + '</span>';
+      }
+      function unitRow(label, ip, m) {
+        const bootOn  = m.boot  === 'enabled';
+        const addonOn = m.addon === 'active' || m.addon === 'node-on' || m.addon === 'node-custom';
+        const cronOn  = m.cron  === 'present';
+        const macOn   = m.mac   && m.mac !== 'off';
+        return '<div class="svc-status-row">'
+          + '<span class="svc-unit-label">' + label + '</span>'
+          + '<span class="svc-unit-hw">'   + (m.hw || '?') + '</span>'
+          + (ip ? '<span class="svc-unit-ip">@' + ip + '</span>' : '')
+          + dot(m.boot,  bootOn)
+          + dot(m.addon, addonOn)
+          + dot(m.cron,  cronOn)
+          + '<span class="svc-unit-mac ' + (macOn ? 'svc-dot-on' : 'svc-dot-off') + '">mac ' + (m.mac || 'off') + '</span>'
+          + '</div>';
+      }
+      let html = data.ts
+        ? '<div class="svc-status-ts">Last checked: ' + data.ts + '</div>' : '';
+      if (data.main)  html += unitRow('Main', '', data.main);
+      if (data.nodes) data.nodes.forEach(function(n, i) {
+        html += unitRow('Node' + (i + 1), n.ip, n);
+      });
+      return html;
+    }
+
 async function handleApplyClick(button) {
     const hasNodes = await checkForConfiguredNodes();
     if (hasNodes) {
@@ -4208,7 +5037,7 @@ async function checkForConfiguredNodes() {
 
 // Run VLAN Manager locally only
 async function runVlanManagerLocal() {
-  document.getElementById('vlanManagerModal').style.display = 'none';
+  closeVlanManagerModal();
   return queueServiceAction('apply_vlanmgr', {
     description: 'Run VLAN Manager (Local Only)',
     cooldownMs: 8000
@@ -4217,7 +5046,7 @@ async function runVlanManagerLocal() {
 
 // Run VLAN Manager with nodes
 async function runVlanManagerWithNodes() {
-  document.getElementById('vlanManagerModal').style.display = 'none';
+  closeVlanManagerModal();
   return queueServiceAction('executenodes_vlanmgr', {
     description: 'Run VLAN Manager + Nodes',
     cooldownMs: 8000
@@ -4226,7 +5055,7 @@ async function runVlanManagerWithNodes() {
 
 // Run VLAN Manager with nodes
 async function runVlanManagerOnlyNodes() {
-  document.getElementById('vlanManagerModal').style.display = 'none';
+  closeVlanManagerModal();
   return queueServiceAction('executenodesonly_vlanmgr', {
     description: 'Run VLAN Manager on Nodes Only',
     cooldownMs: 8000
@@ -4234,7 +5063,7 @@ async function runVlanManagerOnlyNodes() {
 }
 
 async function runMacRefresh() {
-  document.getElementById('vlanManagerModal').style.display = 'none';
+  closeVlanManagerModal();
   return queueServiceAction('macrefresh_vlanmgr', {
     description: 'MAC Shield Refresh',
     cooldownMs: 3000,
@@ -4269,7 +5098,7 @@ async function runMacRefresh() {
 
       if (stpToggle) stpToggle.value = flat["ENABLE_STP"] || "0";
       if (dryRunToggle) dryRunToggle.value = flat["DRY_RUN"] || "yes";
-      if (experimentalToggle) experimentalToggle.checked = flat["EXPERIMENTAL"] === "1";
+      if (experimentalToggle) experimentalToggle.value = flat["EXPERIMENTAL"] === "1" ? "1" : "0";
       if (ensToggle) ensToggle.value = flat["ENABLE_NATIVE_SSID"] || "0";
 
       const stpStatus = document.getElementById("statusENABLE_STP");
@@ -4455,7 +5284,9 @@ async function runMacRefresh() {
       out["vlanmgr_ENABLE_STP"] = document.getElementById("stpToggle").value || "0";
       out["vlanmgr_DRY_RUN"] = document.getElementById("dryRunToggle").value || "yes";
       const experimentalToggle = document.getElementById("experimentalToggle");
-      out["vlanmgr_EXPERIMENTAL"] = experimentalToggle && experimentalToggle.checked ? "1" : "0";
+      out["vlanmgr_EXPERIMENTAL"] = experimentalToggle ? (experimentalToggle.value === "1" ? "1" : "0") : "0";
+      out["vlanmgr_PAUSE"] = (CURRENT_SETTINGS_CACHE && CURRENT_SETTINGS_CACHE["PAUSE"]) || "off";
+      out["vlanmgr_BOOT_ENABLED"] = (CURRENT_SETTINGS_CACHE && CURRENT_SETTINGS_CACHE["BOOT_ENABLED"]) || "0";
       out["vlanmgr_ENABLE_NATIVE_SSID"] = document.getElementById("ensToggle")?.value || "0";
 
       // Hardware_Override and ClientMeta keys are sent via their own scoped
@@ -4551,6 +5382,7 @@ async function runMacRefresh() {
         updateLanProductIdBadge(CURRENT_LAN_TARGET);
       }
       fillFormFromSettings(CURRENT_SETTINGS_CACHE);
+      updatePauseIndicator();
       appendCliText("Loaded settings.json into the form.\n",{scroll:'force'});
       if (hwChanged) {
         appendCliText("UI refreshed: hardware values changed.\n", { scroll: "force" });
@@ -4614,7 +5446,9 @@ async function runMacRefresh() {
       flat["ENABLE_STP"] = document.getElementById("stpToggle").value || "0";
       flat["DRY_RUN"] = document.getElementById("dryRunToggle").value || "yes";
       const experimentalToggle = document.getElementById("experimentalToggle");
-      flat["EXPERIMENTAL"] = experimentalToggle && experimentalToggle.checked ? "1" : "0";
+      flat["EXPERIMENTAL"] = experimentalToggle ? (experimentalToggle.value === "1" ? "1" : "0") : "0";
+      flat["PAUSE"] = (CURRENT_SETTINGS_CACHE && CURRENT_SETTINGS_CACHE["PAUSE"]) || "off";
+      flat["BOOT_ENABLED"] = (CURRENT_SETTINGS_CACHE && CURRENT_SETTINGS_CACHE["BOOT_ENABLED"]) || "0";
       flat["ENABLE_NATIVE_SSID"] = document.getElementById("ensToggle")?.value || "0";
 
       // Pull Hardware_Override flat keys from settings cache into flat object
@@ -4701,7 +5535,13 @@ function anchorModalToForm(modal) {
     const scrollX = window.scrollX || document.documentElement.scrollLeft || 0;
     const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
 
-    const anchorOffset = modal.id === 'versionModal' ? 250 : 0;
+    let anchorOffset = 0;
+    if (modal.id === 'versionModal') {
+      anchorOffset = 250;
+    } else if (modal.id === 'vlanManagerModal') {
+      const modalHeight = modal.offsetHeight || 0;
+      anchorOffset = Math.max(0, (formRect.height - modalHeight) / 2);
+    }
     modal.classList.add('modal--anchored');
     modal.style.left = `${scrollX + formRect.left + formRect.width / 2}px`;
     modal.style.top = `${scrollY + formRect.top + anchorOffset}px`;
@@ -4851,8 +5691,48 @@ function showVlanManagerModal() {
   }
 
   modal.style.display = 'block';
+  anchorModalToForm(modal);
+
+  const overlay = document.getElementById('leftPanelOverlay');
+  if (overlay) {
+    overlay.classList.add('is-active');
+    overlay.style.display = 'block';
+    overlay.style.pointerEvents = 'auto';
+  }
+  const cliLatch = document.getElementById('cliLatch');
+  if (cliLatch) {
+    if (cliLatch.dataset.prevDisplay === undefined) {
+      cliLatch.dataset.prevDisplay = cliLatch.style.display || '';
+    }
+    cliLatch.style.display = 'none';
+  }
+
   // Ensure height alignment after modal changes layout
   setTimeout(adjustClientsPanelHeight, 50);
+}
+
+function closeVlanManagerModal() {
+  const modal = document.getElementById('vlanManagerModal');
+  if (modal) {
+    modal.style.display = 'none';
+    releaseAnchoredModal(modal);
+  }
+  const overlay = document.getElementById('leftPanelOverlay');
+  if (overlay) {
+    const cliPanelEl = document.getElementById('cliPanel');
+    const keepOverlay = cliPanelEl && cliPanelEl.classList.contains('expanded');
+    if (!keepOverlay) {
+      overlay.classList.remove('is-active');
+      overlay.style.display = 'none';
+      overlay.style.pointerEvents = 'none';
+    }
+  }
+  const cliLatch = document.getElementById('cliLatch');
+  if (cliLatch) {
+    const previous = cliLatch.dataset.prevDisplay;
+    cliLatch.style.display = previous !== undefined ? previous : '';
+    if (previous !== undefined) delete cliLatch.dataset.prevDisplay;
+  }
 }
 
 
@@ -4884,14 +5764,39 @@ function openVersionModal() {
   if (detailsSection) detailsSection.style.display = "none";
   if (runUpdateBtn) {
     runUpdateBtn.style.display = "none";
+    runUpdateBtn.textContent = "Update now";
+    runUpdateBtn.classList.remove("update-btn--warn");
     runUpdateBtn.removeAttribute("data-channel");
     runUpdateBtn.removeAttribute("data-latest");
+    runUpdateBtn.removeAttribute("data-ref");
   }
+
+  const releaseSelectSection = document.getElementById("releaseSelectSection");
+  if (releaseSelectSection) releaseSelectSection.style.display = "none";
+  const customBranchSection = document.getElementById("customBranchSection");
+  if (customBranchSection) customBranchSection.style.display = "none";
+  const customBranchInput = document.getElementById("customBranchInput");
+  if (customBranchInput) customBranchInput.value = "";
+  const changelogToggleSection = document.getElementById("changelogToggleSection");
+  if (changelogToggleSection) changelogToggleSection.style.display = "none";
+  const changelogSection = document.getElementById("changelogSection");
+  if (changelogSection) changelogSection.style.display = "none";
+  const toggleChangelogBtn = document.getElementById("toggleChangelogBtn");
+  if (toggleChangelogBtn) toggleChangelogBtn.textContent = "Show Changelog";
+  const downgradeWarn = document.getElementById("downgradeWarning");
+  if (downgradeWarn) downgradeWarn.style.display = "none";
+  const exitWarning = document.getElementById("updateExitWarning");
+  if (exitWarning) exitWarning.style.display = "none";
+  const completeMsg = document.getElementById("updateCompleteMessage");
+  if (completeMsg) completeMsg.style.display = "none";
+  const refreshNowBtn = document.getElementById("refreshNowBtn");
+  if (refreshNowBtn) refreshNowBtn.style.display = "none";
 
   const channelSelect = document.getElementById("versionChannelSelect");
   if (channelSelect) {
     channelSelect.value = "main";
   }
+  updateChannelCapabilityHint("main");
 
   modal.style.display = "block";
   anchorModalToForm(modal);
@@ -4904,6 +5809,14 @@ function openVersionModal() {
 }
 
 function closeVersionModal() {
+  if (isUpdateInProgress) {
+    const exitWarning = document.getElementById("updateExitWarning");
+    if (exitWarning) {
+      exitWarning.style.display = "flex";
+      return;
+    }
+  }
+
   const modal = document.getElementById("versionModal");
   const overlay = document.getElementById("leftPanelOverlay");
 
@@ -5461,49 +6374,123 @@ async function refreshHwProfile() {
 async function checkForUpdates() {
   const statusEl = document.getElementById("updateStatusText");
   const detailsSection = document.getElementById("updateDetailsSection");
-  const latestVerEl = document.getElementById("latestVersionText");
   const comparisonEl = document.getElementById("updateComparisonText");
-  const channelLabel = document.getElementById("latestChannelLabel");
+  const downgradeWarn = document.getElementById("downgradeWarning");
   const runUpdateBtn = document.getElementById("runUpdateBtn");
   const channelSelect = document.getElementById("versionChannelSelect");
   const checkBtn = document.getElementById("checkUpdateBtn");
+  const releaseSelectSection = document.getElementById("releaseSelectSection");
+  const changelogToggleSection = document.getElementById("changelogToggleSection");
 
-  if (!statusEl || !detailsSection || !latestVerEl || !comparisonEl || !channelLabel || !runUpdateBtn || !channelSelect || !checkBtn) {
-    return;
-  }
+  if (!statusEl || !detailsSection || !comparisonEl || !runUpdateBtn || !channelSelect || !checkBtn) return;
 
-  const channel = channelSelect.value === "dev" ? "dev" : "main";
+  const channel = channelSelect.value || "main"; // "main", "main_direct", or "dev"
   const current = getIndexHtmlVersion() || "0.0";
 
   statusEl.textContent = "Checking...";
   detailsSection.style.display = "none";
   runUpdateBtn.style.display = "none";
+  if (releaseSelectSection) releaseSelectSection.style.display = "none";
+  if (changelogToggleSection) changelogToggleSection.style.display = "none";
+  hideChangelogDisplay();
   checkBtn.disabled = true;
 
   try {
-    const latest = await fetchLatestVersionFromChangelog(channel);
-    const cmp = compareVersions(latest, current);
+    if (channel === "main") {
+      const releases = await fetchReleasesFromAPI();
+      if (!releases || releases.length === 0) throw new Error("No releases found");
 
-    latestVerEl.textContent = "v" + latest;
-    channelLabel.textContent = channel;
+      populateReleaseDropdown(releases);
+      if (releaseSelectSection) releaseSelectSection.style.display = "block";
+      if (changelogToggleSection) changelogToggleSection.style.display = "block";
 
-    if (cmp > 0) {
-      comparisonEl.textContent = `A newer version is available (${latest} > ${current}).`;
-      runUpdateBtn.style.display = "inline-block";
-      runUpdateBtn.dataset.channel = channel;
-      runUpdateBtn.dataset.latest = latest;
-    } else if (cmp === 0) {
-      comparisonEl.textContent = `You are already on the latest version (${current}).`;
-      runUpdateBtn.style.display = "none";
+      const newest = releases[0];
+      updateReleaseComparison(newest.tag, current, runUpdateBtn, comparisonEl, downgradeWarn, detailsSection);
+    } else if (channel === "main_direct") {
+      const latest = await fetchLatestVersionFromChangelog("main");
+      const currentIsDev = current.endsWith("-dev");
+      const cmp = compareVersions(latest, current);
+
+      if (cmp > 0) {
+        comparisonEl.textContent = `Update available: v${current} \u2192 ${latest}`;
+        runUpdateBtn.textContent = "Update now";
+        runUpdateBtn.classList.remove("update-btn--warn");
+        runUpdateBtn.style.display = "inline-block";
+        runUpdateBtn.dataset.channel = "main_direct";
+        runUpdateBtn.dataset.ref = "main";
+        runUpdateBtn.dataset.latest = latest;
+        if (downgradeWarn) downgradeWarn.style.display = "none";
+      } else if (cmp === 0 && currentIsDev) {
+        comparisonEl.textContent = `${latest} \u2014 switching from dev to stable build.`;
+        runUpdateBtn.textContent = "Switch to Stable";
+        runUpdateBtn.classList.remove("update-btn--warn");
+        runUpdateBtn.style.display = "inline-block";
+        runUpdateBtn.dataset.channel = "main_direct";
+        runUpdateBtn.dataset.ref = "main";
+        runUpdateBtn.dataset.latest = latest;
+        if (downgradeWarn) downgradeWarn.style.display = "none";
+      } else if (cmp < 0 && currentIsDev) {
+        // Dev build is ahead of latest stable — still allow switching to stable
+        comparisonEl.textContent = `Your dev build (v${current}) is ahead of the latest stable (${latest}). You can still switch to stable.`;
+        runUpdateBtn.textContent = "Switch to Stable";
+        runUpdateBtn.classList.remove("update-btn--warn");
+        runUpdateBtn.style.display = "inline-block";
+        runUpdateBtn.dataset.channel = "main_direct";
+        runUpdateBtn.dataset.ref = "main";
+        runUpdateBtn.dataset.latest = latest;
+        if (downgradeWarn) downgradeWarn.style.display = "none";
+      } else {
+        // cmp === 0 && !currentIsDev  OR  cmp < 0 && !currentIsDev
+        comparisonEl.textContent = `You are on the latest stable release (v${latest}).`;
+        runUpdateBtn.style.display = "none";
+        if (downgradeWarn) downgradeWarn.style.display = "none";
+      }
+      detailsSection.style.display = "block";
+      if (changelogToggleSection) changelogToggleSection.style.display = "block";
     } else {
-      comparisonEl.textContent = `Local UI (${current}) is newer than changelog (${latest}).`;
-      runUpdateBtn.style.display = "none";
+      const latest = await fetchLatestVersionFromChangelog("dev");
+      const currentIsDev = current.endsWith("-dev");
+      const cmp = compareVersions(latest, current);
+
+      if (cmp > 0) {
+        comparisonEl.textContent = `A newer version is available on dev (${latest} > ${current}).`;
+        runUpdateBtn.textContent = "Update now";
+        runUpdateBtn.classList.remove("update-btn--warn");
+        runUpdateBtn.style.display = "inline-block";
+        runUpdateBtn.dataset.channel = "dev";
+        runUpdateBtn.dataset.ref = "dev";
+        runUpdateBtn.dataset.latest = latest;
+        if (downgradeWarn) downgradeWarn.style.display = "none";
+      } else if (cmp === 0 && !currentIsDev) {
+        comparisonEl.textContent = `${latest} \u2014 switching from stable to dev build.`;
+        runUpdateBtn.textContent = "Switch to Dev";
+        runUpdateBtn.classList.remove("update-btn--warn");
+        runUpdateBtn.style.display = "inline-block";
+        runUpdateBtn.dataset.channel = "dev";
+        runUpdateBtn.dataset.ref = "dev";
+        runUpdateBtn.dataset.latest = latest;
+        if (downgradeWarn) downgradeWarn.style.display = "none";
+      } else if (cmp === 0) {
+        comparisonEl.textContent = `You are already on the latest dev version (${current}).`;
+        runUpdateBtn.style.display = "none";
+        if (downgradeWarn) downgradeWarn.style.display = "none";
+      } else {
+        comparisonEl.textContent = `Local UI (${current}) is newer than dev channel (${latest}).`;
+        runUpdateBtn.style.display = "none";
+        if (downgradeWarn) downgradeWarn.style.display = "none";
+      }
+      detailsSection.style.display = "block";
+      if (changelogToggleSection) changelogToggleSection.style.display = "block";
     }
 
-    detailsSection.style.display = "block";
     statusEl.textContent = "";
   } catch (err) {
-    statusEl.textContent = "Error checking updates: " + err.message;
+    let errMsg = "Error: " + err.message;
+    if (channel === "main") {
+      errMsg += " \u2014 try \u201cStable (latest only)\u201d to install the newest version without version selection.";
+    }
+    statusEl.textContent = errMsg;
+    statusEl.style.color = "";
     detailsSection.style.display = "none";
     runUpdateBtn.style.display = "none";
   } finally {
@@ -5511,25 +6498,333 @@ async function checkForUpdates() {
   }
 }
 
-function runUpdateFromModal(buttonEl) {
+// ── releases.json helpers ────────────────────────────────────────────────────
+
+let _releasesData = [];
+const _changelogCache = new Map();
+
+async function fetchReleasesFromAPI() {
+  const url = "https://api.github.com/repos/r80xcore/mervlan/releases?per_page=5";
+  const resp = await fetch(url, { headers: { "Accept": "application/vnd.github+json" } });
+  if (resp.status === 403) throw new Error("GitHub API rate limit reached \u2014 try again shortly.");
+  if (!resp.ok) throw new Error("HTTP " + resp.status);
+  const data = await resp.json();
+  if (!Array.isArray(data)) throw new Error("Unexpected API response format");
+  return data.map(r => ({
+    tag: r.tag_name,
+    date: r.published_at ? r.published_at.slice(0, 10) : "",
+    changelog: r.body || ""
+  }));
+}
+
+async function fetchBranchChangelog(branch) {
+  const cacheKey = "cl_" + branch;
+  if (_changelogCache.has(cacheKey)) return _changelogCache.get(cacheKey);
+  const url = "https://raw.githubusercontent.com/r80xcore/mervlan/" + branch + "/changelog.txt?_=" + Date.now();
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error("HTTP " + resp.status);
+  const text = await resp.text();
+  const endIdx = text.indexOf("END OF CURRENT CHANGELOG");
+  const content = endIdx >= 0 ? text.slice(0, endIdx).trimEnd() : text.trimEnd();
+  _changelogCache.set(cacheKey, content);
+  return content;
+}
+
+async function fetchDevChangelog() {
+  return fetchBranchChangelog("dev");
+}
+
+function populateReleaseDropdown(releases) {
+  _releasesData = releases;
+  const releaseSelect = document.getElementById("releaseSelect");
+  if (!releaseSelect) return;
+  releaseSelect.innerHTML = "";
+  releases.forEach(r => {
+    const opt = document.createElement("option");
+    opt.value = r.tag;
+    opt.textContent = r.tag + (r.date ? "  \u2014  " + r.date : "");
+    releaseSelect.appendChild(opt);
+  });
+  const customOpt = document.createElement("option");
+  customOpt.value = "__custom_branch__";
+  customOpt.textContent = "\u26A0 Custom branch (dev only)...";
+  releaseSelect.appendChild(customOpt);
+}
+
+function updateReleaseComparison(tagName, current, runUpdateBtn, comparisonEl, downgradeWarn, detailsSection) {
+  const ver = normalizeVersionString(tagName);
+  const currentIsDev = (current || "").endsWith("-dev");
+  const cmp = compareVersions(ver, current);
+  const ref = "refs/tags/" + tagName;
+
+  if (cmp > 0) {
+    if (comparisonEl) comparisonEl.textContent = `Update available: v${current} \u2192 ${tagName}`;
+    if (downgradeWarn) downgradeWarn.style.display = "none";
+    if (runUpdateBtn) {
+      runUpdateBtn.textContent = "Update now";
+      runUpdateBtn.classList.remove("update-btn--warn");
+      runUpdateBtn.style.display = "inline-block";
+      runUpdateBtn.dataset.channel = "main";
+      runUpdateBtn.dataset.ref = ref;
+      runUpdateBtn.dataset.latest = ver;
+    }
+  } else if (cmp === 0 && currentIsDev) {
+    if (comparisonEl) comparisonEl.textContent = `${tagName} \u2014 switching from dev to stable build.`;
+    if (downgradeWarn) downgradeWarn.style.display = "none";
+    if (runUpdateBtn) {
+      runUpdateBtn.textContent = "Switch to Stable";
+      runUpdateBtn.classList.remove("update-btn--warn");
+      runUpdateBtn.style.display = "inline-block";
+      runUpdateBtn.dataset.channel = "main";
+      runUpdateBtn.dataset.ref = ref;
+      runUpdateBtn.dataset.latest = ver;
+    }
+  } else if (cmp === 0) {
+    if (comparisonEl) comparisonEl.textContent = `${tagName} is already installed.`;
+    if (downgradeWarn) downgradeWarn.style.display = "none";
+    if (runUpdateBtn) runUpdateBtn.style.display = "none";
+  } else {
+    if (comparisonEl) comparisonEl.textContent = `${tagName} is older than your current install (v${current}).`;
+    if (downgradeWarn) downgradeWarn.style.display = "block";
+    if (runUpdateBtn) {
+      runUpdateBtn.textContent = "Install anyway";
+      runUpdateBtn.classList.add("update-btn--warn");
+      runUpdateBtn.style.display = "inline-block";
+      runUpdateBtn.dataset.channel = "main";
+      runUpdateBtn.dataset.ref = ref;
+      runUpdateBtn.dataset.latest = ver;
+    }
+  }
+
+  if (detailsSection) detailsSection.style.display = "block";
+}
+
+function onReleaseSelectChange() {
+  const current = getIndexHtmlVersion() || "0.0";
+  const releaseSelect = document.getElementById("releaseSelect");
+  if (!releaseSelect) return;
+  const selectedTag = releaseSelect.value;
+  const customBranchSection = document.getElementById("customBranchSection");
+  const customBranchInput = document.getElementById("customBranchInput");
+  const changelogToggleSection = document.getElementById("changelogToggleSection");
+  const runUpdateBtn = document.getElementById("runUpdateBtn");
+  const comparisonEl = document.getElementById("updateComparisonText");
+  const downgradeWarn = document.getElementById("downgradeWarning");
+  const detailsSection = document.getElementById("updateDetailsSection");
+
+  if (selectedTag === "__custom_branch__") {
+    if (customBranchSection) customBranchSection.style.display = "block";
+    if (customBranchInput) customBranchInput.value = "";
+    if (changelogToggleSection) changelogToggleSection.style.display = "none";
+    if (comparisonEl) comparisonEl.textContent = "Enter a branch name above, then click Install.";
+    if (downgradeWarn) downgradeWarn.style.display = "none";
+    if (detailsSection) detailsSection.style.display = "block";
+    if (runUpdateBtn) runUpdateBtn.style.display = "none";
+    hideChangelogDisplay();
+    const toggleBtn = document.getElementById("toggleChangelogBtn");
+    if (toggleBtn) toggleBtn.textContent = "Show Changelog";
+    if (customBranchInput) setTimeout(() => customBranchInput.focus(), 50);
+    return;
+  }
+
+  if (customBranchSection) customBranchSection.style.display = "none";
+  if (customBranchInput) customBranchInput.value = "";
+  if (changelogToggleSection) changelogToggleSection.style.display = "block";
+
+  updateReleaseComparison(selectedTag, current, runUpdateBtn, comparisonEl, downgradeWarn, detailsSection);
+  hideChangelogDisplay();
+  const toggleBtn = document.getElementById("toggleChangelogBtn");
+  if (toggleBtn) toggleBtn.textContent = "Show Changelog";
+}
+
+function onCustomBranchInput() {
+  const input = document.getElementById("customBranchInput");
+  const runUpdateBtn = document.getElementById("runUpdateBtn");
+  if (!input || !runUpdateBtn) return;
+  const branch = input.value.trim();
+  const valid = branch.length > 0 &&
+    /^[a-zA-Z0-9][a-zA-Z0-9._\-\/]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/.test(branch) &&
+    branch.indexOf("//") === -1;
+  if (valid) {
+    runUpdateBtn.textContent = "Install branch";
+    runUpdateBtn.classList.add("update-btn--warn");
+    runUpdateBtn.style.display = "inline-block";
+    runUpdateBtn.dataset.channel = "custom";
+    runUpdateBtn.dataset.ref = "refs/heads/" + branch;
+    runUpdateBtn.dataset.latest = branch;
+  } else {
+    runUpdateBtn.style.display = "none";
+  }
+}
+
+function onChannelSelectChange() {
+  const channelSelectEl = document.getElementById("versionChannelSelect");
+  updateChannelCapabilityHint(channelSelectEl ? channelSelectEl.value : "main");
+  const detailsSection = document.getElementById("updateDetailsSection");
+  const releaseSelectSection = document.getElementById("releaseSelectSection");
+  const runUpdateBtn = document.getElementById("runUpdateBtn");
+  const changelogToggleSection = document.getElementById("changelogToggleSection");
+  const statusEl = document.getElementById("updateStatusText");
+  const downgradeWarn = document.getElementById("downgradeWarning");
+
+  if (detailsSection) detailsSection.style.display = "none";
+  if (releaseSelectSection) releaseSelectSection.style.display = "none";
+  if (runUpdateBtn) runUpdateBtn.style.display = "none";
+  if (changelogToggleSection) changelogToggleSection.style.display = "none";
+  if (statusEl) { statusEl.textContent = ""; statusEl.style.color = ""; }
+  if (downgradeWarn) downgradeWarn.style.display = "none";
+  const customBranchSection = document.getElementById("customBranchSection");
+  if (customBranchSection) customBranchSection.style.display = "none";
+  const customBranchInput = document.getElementById("customBranchInput");
+  if (customBranchInput) customBranchInput.value = "";
+  hideChangelogDisplay();
+  const toggleBtn = document.getElementById("toggleChangelogBtn");
+  if (toggleBtn) toggleBtn.textContent = "Show Changelog";
+}
+
+function updateChannelCapabilityHint(channel) {
+  const hint = document.getElementById("channelCapabilityHint");
+  if (!hint) return;
+  switch (channel) {
+    case "main":
+      hint.innerHTML = "Select from recent releases. Supports upgrade and downgrade.<br>Uses GitHub API \u2014 subject to rate limits.";
+      break;
+    case "main_direct":
+      hint.innerHTML = "Updates to the latest release only. No version selection.<br>No API \u2014 never rate limited.";
+      break;
+    case "dev":
+      hint.innerHTML = "Installs from the dev branch. May be unstable.<br>No API \u2014 never rate limited.";
+      break;
+    default:
+      hint.textContent = "";
+  }
+}
+
+function toggleChangelogDisplay() {
+  const section = document.getElementById("changelogSection");
+  const content = document.getElementById("changelogContent");
+  const btn = document.getElementById("toggleChangelogBtn");
+  if (!section || !content || !btn) return;
+
+  if (section.style.display !== "none") {
+    section.style.display = "none";
+    btn.textContent = "Show Changelog";
+    return;
+  }
+
+  const channelSelect = document.getElementById("versionChannelSelect");
+  const channelVal = channelSelect ? channelSelect.value : "main";
+
+  if (channelVal === "main") {
+    const releaseSelect = document.getElementById("releaseSelect");
+    if (!releaseSelect) return;
+    const selectedTag = releaseSelect.value;
+    const release = _releasesData.find(r => r.tag === selectedTag);
+    const text = (release && release.changelog) ? release.changelog : "(No changelog available for this release.)";
+    content.textContent = text;
+    section.style.display = "block";
+    btn.textContent = "Hide Changelog";
+  } else {
+    // dev or main_direct: fetch changelog.txt from the respective branch
+    const branchForChangelog = channelVal === "main_direct" ? "main" : "dev";
+    btn.textContent = "Loading...";
+    btn.disabled = true;
+    fetchBranchChangelog(branchForChangelog).then(text => {
+      content.textContent = text || "(No changelog available.)";
+      section.style.display = "block";
+      btn.textContent = "Hide Changelog";
+    }).catch(err => {
+      content.textContent = "Failed to load changelog: " + err.message;
+      section.style.display = "block";
+      btn.textContent = "Hide Changelog";
+    }).finally(() => {
+      btn.disabled = false;
+    });
+  }
+}
+
+function hideChangelogDisplay() {
+  const section = document.getElementById("changelogSection");
+  if (section) section.style.display = "none";
+}
+
+function dismissUpdateExitWarning() {
+  const w = document.getElementById("updateExitWarning");
+  if (w) w.style.display = "none";
+}
+
+function forceCloseVersionModal() {
+  dismissUpdateExitWarning();
+  isUpdateInProgress = false;
+  closeVersionModal();
+}
+
+async function runUpdateFromModal(buttonEl) {
   if (!buttonEl) return;
 
-  const channel = buttonEl.dataset.channel === "dev" ? "dev" : "main";
+  const channel = buttonEl.dataset.channel;
+  const ref = buttonEl.dataset.ref || "";
   const latest = buttonEl.dataset.latest || "";
-  const actionName = channel === "dev" ? "updatedev_vlanmgr" : "update_vlanmgr";
-  const desc = channel === "dev"
-    ? `Update MerVLAN (development channel${latest ? " → v" + latest : ""})`
-    : `Update MerVLAN (stable channel${latest ? " → v" + latest : ""})`;
+
+  // Dev and main_direct channels: use queueServiceAction directly (no version ref needed)
+  if (channel === "dev" || channel === "main_direct") {
+    const actionName = channel === "dev" ? "updatedev_vlanmgr" : "update_vlanmgr";
+    const desc = channel === "dev"
+      ? `Update MerVLAN (development channel${latest ? " \u2192 v" + latest : ""})`
+      : `Update MerVLAN (latest stable release${latest ? " \u2014 v" + latest : ""})`;
+    isUpdateInProgress = true;
+    startUpdateSpinner();
+    startUpdateLogPolling();
+    queueServiceAction(actionName, {
+      button: buttonEl,
+      description: desc,
+      cooldownMs: 10000
+    });
+    return;
+  }
+
+  // Custom branch: verify the branch exists on GitHub before triggering
+  if (channel === "custom") {
+    const statusEl = document.getElementById("updateStatusText");
+    if (statusEl) { statusEl.textContent = "Checking branch..."; statusEl.style.color = ""; }
+    try {
+      const checkUrl = "https://raw.githubusercontent.com/r80xcore/mervlan/" + latest + "/changelog.txt?_=" + Date.now();
+      const r = await fetch(checkUrl, { method: "HEAD" });
+      if (!r.ok) {
+        if (statusEl) { statusEl.textContent = "Branch \"" + latest + "\" not found on GitHub."; statusEl.style.color = "#ff8a8a"; }
+        return;
+      }
+    } catch (e) {
+      // Network error: proceed and let the update script report the failure
+    }
+    const statusEl2 = document.getElementById("updateStatusText");
+    if (statusEl2) { statusEl2.textContent = ""; statusEl2.style.color = ""; }
+  }
+
+  // Release or custom branch: call MVM_updateRelease directly so the ref
+  // is passed as vlanmgr_update_ref in the settings object (written to
+  // custom_settings.txt by Merlin, readable by the service handler)
+  const desc = (channel === "custom" && latest)
+    ? `MerVLAN install from branch: ${latest}`
+    : `MerVLAN update to ${ref || "selected release"}`;
 
   isUpdateInProgress = true;
   startUpdateSpinner();
   startUpdateLogPolling();
+  disableBtnTemporarily(buttonEl, 10000);
+  appendCliText(`\n[${new Date().toLocaleString()}] Queued action: ${desc}\n`, { scroll: 'force' });
 
-  queueServiceAction(actionName, {
-    button: buttonEl,
-    description: desc,
-    cooldownMs: 10000
-  });
+  const parentWin = window.parent;
+  if (parentWin && typeof parentWin.MVM_updateRelease === "function") {
+    parentWin.MVM_updateRelease(ref);
+  } else {
+    appendCliText(`[${new Date().toLocaleString()}] Parent handler not available for update.\n`, { scroll: 'force' });
+    isUpdateInProgress = false;
+    stopUpdateSpinner("Error");
+    stopUpdateLogPolling();
+    return;
+  }
+  startPolling();
 }
 
 
@@ -5576,7 +6871,7 @@ function isManagedNodeKey(k) {
 
 function extractManagedKeys(flat) {
   const out = {};
-  const staticRe = /^(ENABLE_STP|DRY_RUN|EXPERIMENTAL|ENABLE_NATIVE_SSID|SSID_\d\d|VLAN_\d\d|APISO_\d\d|SSIDassign_\d\d|ETH\d+_VLAN|TRUNK\d+|TAGGED_TRUNK\d+|UNTAGGED_TRUNK\d+|MAC_SHIELD_OVERRIDES|CLIENT_NAME_OVERRIDES)$/;
+  const staticRe = /^(BOOT_ENABLED|PAUSE|ENABLE_STP|DRY_RUN|EXPERIMENTAL|ENABLE_NATIVE_SSID|SSID_\d\d|VLAN_\d\d|APISO_\d\d|SSIDassign_\d\d|ETH\d+_VLAN|TRUNK\d+|TAGGED_TRUNK\d+|UNTAGGED_TRUNK\d+|MAC_SHIELD_OVERRIDES|CLIENT_NAME_OVERRIDES)$/;
   Object.keys(flat || {}).forEach(k => {
     if (staticRe.test(k) || isManagedNodeKey(k)) out[k] = String(flat[k] ?? "");
   });
@@ -5603,7 +6898,7 @@ function extractManagedKeysForScope(flat, scope) {
   }
 
   // "normal": all managed keys except OVERRIDE_* and ClientMeta
-  const normalStaticRe = /^(ENABLE_STP|DRY_RUN|EXPERIMENTAL|ENABLE_NATIVE_SSID|SSID_\d\d|VLAN_\d\d|APISO_\d\d|SSIDassign_\d\d|ETH\d+_VLAN|TRUNK\d+|TAGGED_TRUNK\d+|UNTAGGED_TRUNK\d+)$/;
+  const normalStaticRe = /^(BOOT_ENABLED|PAUSE|ENABLE_STP|DRY_RUN|EXPERIMENTAL|ENABLE_NATIVE_SSID|SSID_\d\d|VLAN_\d\d|APISO_\d\d|SSIDassign_\d\d|ETH\d+_VLAN|TRUNK\d+|TAGGED_TRUNK\d+|UNTAGGED_TRUNK\d+)$/;
   Object.keys(all).forEach(k => {
     if (normalStaticRe.test(k)) { out[k] = String(all[k] ?? ""); return; }
     let m;
@@ -5712,91 +7007,93 @@ async function waitForSettingsToMatch(expectedManaged, opts = {}) {
 
 // ════════════════════════════════════════════════════════════════════════════
 
-async function uploadSettingsAndSave(btn) {
-  return withActionLock("save", async () => {
+async function uploadSettingsAndSave(btn, options = {}) {
+  const {
+    clearForm: shouldClearForm = true,
+    reloadAfterSave = true,
+    restartPolling = true,
+    lockName = 'save',
+    timeoutMs = 25000,
+    intervalMs = 700
+  } = options;
+
+  const result = await withActionLock(lockName, async () => {
     stopPolling();
     const triggerBtn = btn instanceof HTMLElement ? btn : document.querySelector('button[onclick*="uploadSettingsAndSave"]');
-    if (triggerBtn) {
-      disableBtnTemporarily(triggerBtn, 5000);
-    }
+    if (triggerBtn) disableBtnTemporarily(triggerBtn, 5000);
 
     try {
-      const newJsonStr = formToSettingsJSON();
       let newObj;
       try {
-        newObj = JSON.parse(newJsonStr);
-      } catch (e) {
-        appendCliText("Save error: form produced invalid JSON\n", {scroll: 'force'});
-        return;
+        newObj = JSON.parse(formToSettingsJSON());
+      } catch (_) {
+        const error = 'Form produced invalid JSON.';
+        appendCliText('Save error: ' + error + '\n', { scroll: 'force' });
+        return { ok: false, changed: false, error };
       }
 
       let oldObj = null;
       try {
-        const response = await fetch(PATHS.SETTINGS + "?_=" + Date.now());
-        if (response.ok) {
-          const currentSettings = await response.text();
-          oldObj = JSON.parse(currentSettings);
-        }
-      } catch (e) {
-        // ignore - treat as changed
-      }
+        oldObj = await fetchSettingsObjNoStore();
+      } catch (_) {}
 
       if (oldObj && deepEqualObjects(oldObj, newObj)) {
-        appendCliText("Settings unchanged - no need to save.\n", {scroll: 'force'});
-        return;
+        appendCliText('Settings unchanged - no need to save.\n', { scroll: 'force' });
+        return { ok: true, changed: false };
       }
 
       const merlinPayload = buildNormalSettingsPayloadForMerlin();
       const payloadStr = JSON.stringify(merlinPayload);
       if (payloadStr.length > MERLIN_SAVE_PAYLOAD_LIMIT) {
-        appendCliText(`Error: Payload too large to save (${payloadStr.length}/${MERLIN_SAVE_PAYLOAD_LIMIT} bytes).\n`, {scroll: 'force'});
-        return;
+        const error = `Payload too large to save (${payloadStr.length}/${MERLIN_SAVE_PAYLOAD_LIMIT} bytes).`;
+        appendCliText('Error: ' + error + '\n', { scroll: 'force' });
+        return { ok: false, changed: false, error };
       }
 
-      appendCliText(`Saving settings via Merlin (${payloadStr.length} bytes)...\n`, {scroll: 'force'});
-
-      // Compute expected managed keys for verification polling
-      const expectedFlat = normalizeToFlatSettings(newObj);
-      const expectedManaged = extractManagedKeysForScope(expectedFlat, "normal");
-
-      if (window.parent && typeof window.parent.MVM_save === "function") {
-        window.parent.MVM_save(merlinPayload);
-
-        // Clear form at 0.5s to show we're doing something
-        setTimeout(() => {
-          appendCliText("Clearing form fields...\n", {scroll: 'force'});
-          clearFields();
-        }, 500);
-
-        // Start polling at 3s - wait until settings.json actually matches
-        setTimeout(async () => {
-          appendCliText("Waiting for settings to persist...\n", { scroll: "force" });
-
-          // Wait until the router actually wrote the new settings.json
-          const ok = await waitForSettingsToMatch(expectedManaged, {
-            timeoutMs: 25000,
-            intervalMs: 700,
-            scope: "normal"
-          });
-
-          appendCliText("Reloading settings from disk...\n", { scroll: "force" });
-          await loadSettings();
-
-          appendCliText(
-            ok ? "Save verification complete.\n"
-               : "Save verification: settings.json did not match yet (may still be writing). Loaded latest available.\n",
-            { scroll: "force" }
-          );
-        }, 3000);
-
-      } else {
-        appendCliText("Save error: parent page handler not available.\n", {scroll: 'force'});
-        return;
+      const parentWin = window.parent;
+      if (!parentWin || typeof parentWin.MVM_save !== 'function') {
+        const error = 'Parent page save handler is unavailable.';
+        appendCliText('Save error: ' + error + '\n', { scroll: 'force' });
+        return { ok: false, changed: false, error };
       }
-    } catch (err) {
-      appendCliText("Save error: " + err + "\n", {scroll: 'force'});
+
+      const expectedManaged = extractManagedKeysForScope(normalizeToFlatSettings(newObj), 'normal');
+      appendCliText(`Saving settings via Merlin (${payloadStr.length} bytes)...\n`, { scroll: 'force' });
+      parentWin.MVM_save(merlinPayload);
+
+      if (shouldClearForm) {
+        appendCliText('Clearing form fields...\n', { scroll: 'force' });
+        clearFields();
+      }
+
+      appendCliText('Waiting for settings to persist...\n', { scroll: 'force' });
+      const ok = await waitForSettingsToMatch(expectedManaged, {
+        timeoutMs,
+        intervalMs,
+        scope: 'normal'
+      });
+
+      if (reloadAfterSave) {
+        appendCliText('Reloading settings from disk...\n', { scroll: 'force' });
+        await loadSettings();
+      }
+
+      if (!ok) {
+        const error = 'Settings did not match the requested values before the save timeout.';
+        appendCliText('Save verification failed: ' + error + '\n', { scroll: 'force' });
+        return { ok: false, changed: true, error };
+      }
+
+      appendCliText('Save verification complete.\n', { scroll: 'force' });
+      return { ok: true, changed: true };
+    } catch (error) {
+      const message = error && error.message ? error.message : String(error);
+      appendCliText('Save error: ' + message + '\n', { scroll: 'force' });
+      return { ok: false, changed: false, error: message };
     }
   }, 8000);
+  if (restartPolling) startPolling();
+  return result;
 }
 </script>
 
