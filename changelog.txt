@@ -1,6 +1,12 @@
-mervlan v0.53.20-dev
+mervlan v0.53.21-dev
 
 Fixed: GUI custom-branch and tagged-release updates not starting
+- Custom branch is now a dedicated bottom-level channel instead of a synthetic
+  entry inside the GitHub release picker. Its target is rebuilt from the live
+  branch field at click time, so stale release metadata cannot be reused.
+- Branch and tag names are encoded into a dedicated updateref_vlanmgr service
+  event and decoded/validated by service-event-handler.sh. Ref selection no
+  longer depends on custom_settings.txt being written before the event starts.
 - Ref submissions now call the legacy MVM_exec/updatedev_vlanmgr path directly
   from index.html. This prevents an older or stale mervlan.asp wrapper from
   replacing the selected custom branch/tag with its main or release target.
