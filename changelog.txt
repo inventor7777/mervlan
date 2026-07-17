@@ -1,3 +1,19 @@
+mervlan v0.53.18-dev
+
+Fixed: GUI custom-branch and tagged-release updates not starting
+- Ref-based GUI updates now travel through the legacy updatedev_vlanmgr event,
+  allowing older installed service-event handlers to launch the new updater.
+- update_mervlan.sh consumes vlanmgr_update_ref as a validated one-shot value,
+  then removes it so later main, dev, or CLI updates cannot inherit a stale ref.
+- Parent action rejection and deduplication are now reported immediately instead
+  of leaving the update spinner running with only a queued-action message.
+- The action acknowledgement library is optional during archive validation so
+  switching to older main/dev/tag targets that predate the library still works.
+- Stable latest, dev, custom branch, and tagged-release codeload archives are all
+  validated through the same updater target-resolution flow.
+
+################ END OF CURRENT CHANGELOG
+
 mervlan v0.53.17-dev
 
 Fixed: BOOT_ENABLED and PAUSE not loading in the UI after settings load
