@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <!-- mervlan.asp version="0.53" -->
+  <!-- mervlan.asp version="0.54" -->
 <meta http-equiv="X-UA-Compatible" content="IE=Edge">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta http-equiv="Pragma" content="no-cache">
@@ -123,7 +123,8 @@ function showLoadingSafe(secHint) {
 function MVM_exec(actionScriptName, settingsObjOrNull, opts) {
   opts = opts || {};
 
-  if (!MVM_ALLOWED_ACTIONS.has(actionScriptName)) {
+  var isEncodedUpdateRef = /^updateref_vlanmgr_[ht]_[0-9a-f]+$/.test(actionScriptName);
+  if (!MVM_ALLOWED_ACTIONS.has(actionScriptName) && !isEncodedUpdateRef) {
     if (window.console && typeof console.warn === "function") {
       console.warn("[MVM] blocked disallowed action", actionScriptName);
     }
@@ -466,6 +467,36 @@ function MVM_updateDev(opts)                 { return MVM_exec("updatedev_vlanmg
 // Older installed service-event handlers already understand this event; the
 // updater consumes vlanmgr_update_ref and replaces the fallback "dev" target.
 function MVM_updateRelease(ref, opts)        { return MVM_exec("updatedev_vlanmgr", { vlanmgr_update_ref: ref }, mvmOptsFor("updatedev_vlanmgr", opts)); }
+function MVM_updateRef(ref, opts) {
+  var value = String(ref || "");
+  var kind = "";
+  var name = "";
+  if (value.indexOf("refs/heads/") === 0) {
+    kind = "h";
+    name = value.slice(11);
+  } else if (value.indexOf("refs/tags/") === 0) {
+    kind = "t";
+    name = value.slice(10);
+  }
+  if (!kind || !name || !/^[A-Za-z0-9][A-Za-z0-9._\/-]*[A-Za-z0-9]$|^[A-Za-z0-9]$/.test(name)) {
+    return false;
+  }
+  if (name.indexOf("//") !== -1 || name.indexOf("..") !== -1 || name.slice(-5) === ".lock") {
+    return false;
+  }
+  var hex = "";
+  for (var i = 0; i < name.length; i++) {
+    var code = name.charCodeAt(i);
+    if (code > 127) return false;
+    hex += ("0" + code.toString(16)).slice(-2);
+  }
+  var actionName = "updateref_vlanmgr_" + kind + "_" + hex;
+  var actionOpts = { loading: false, skipRefresh: true, waitSec: 0, minLoadingMs: 0, target: "hidden_frame" };
+  if (opts && typeof opts === "object") {
+    Object.keys(opts).forEach(function(key) { actionOpts[key] = opts[key]; });
+  }
+  return MVM_exec(actionName, null, actionOpts);
+}
 function MVM_hwprobe(opts)                    { return MVM_exec("hwprobe_vlanmgr",       null,        mvmOptsFor("hwprobe_vlanmgr",       opts)); }
 function MVM_macRefresh(opts)                 { return MVM_exec("macrefresh_vlanmgr",    null,        mvmOptsFor("macrefresh_vlanmgr",    opts)); }
 function MVM_macClientMeta(opts)             { return MVM_exec("macclientmeta_vlanmgr", null,        mvmOptsFor("macclientmeta_vlanmgr", opts)); }
