@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!-- index.html version="0.53.19-dev" -->
+  <!-- index.html version="0.53.20-dev" -->
   <meta charset="utf-8" />
   <title>MerVLAN Manager</title>
   <link rel="stylesheet" href="vlan_form_style.css" />
@@ -6768,6 +6768,22 @@ function forceCloseVersionModal() {
   closeVersionModal();
 }
 
+function submitRefUpdateThroughParent(parentWin, ref) {
+  const payload = { vlanmgr_update_ref: ref };
+  const opts = { loading: false, skipRefresh: true, waitSec: 0, minLoadingMs: 0 };
+
+  // MVM_exec and updatedev_vlanmgr exist in older MerVLAN parent pages and
+  // service-event handlers. Submit the ref directly instead of trusting a
+  // possibly stale MVM_updateRelease wrapper to preserve the selected target.
+  if (parentWin && typeof parentWin.MVM_exec === "function") {
+    return parentWin.MVM_exec("updatedev_vlanmgr", payload, opts);
+  }
+  if (parentWin && typeof parentWin.MVM_updateRelease === "function") {
+    return parentWin.MVM_updateRelease(ref, opts);
+  }
+  return false;
+}
+
 async function runUpdateFromModal(buttonEl) {
   if (!buttonEl) return;
 
@@ -6815,9 +6831,8 @@ async function runUpdateFromModal(buttonEl) {
     if (statusEl2) { statusEl2.textContent = ""; statusEl2.style.color = ""; }
   }
 
-  // Release or custom branch: call MVM_updateRelease directly so the ref
-  // is passed as vlanmgr_update_ref in the settings object (written to
-  // custom_settings.txt by Merlin, readable by the service handler)
+  // Release or custom branch: pass the selected ref through the legacy update
+  // event so older installed parent pages and event handlers remain compatible.
   const desc = (channel === "custom" && latest)
     ? `MerVLAN install from branch: ${latest}`
     : `MerVLAN update to ${ref || "selected release"}`;
@@ -6829,9 +6844,11 @@ async function runUpdateFromModal(buttonEl) {
   appendCliText(`\n[${new Date().toLocaleString()}] Queued action: ${desc}\n`, { scroll: 'force' });
 
   const parentWin = window.parent;
-  if (parentWin && typeof parentWin.MVM_updateRelease === "function") {
-    const submitted = parentWin.MVM_updateRelease(ref);
-    if (submitted !== true) {
+  if (parentWin && (typeof parentWin.MVM_exec === "function" || typeof parentWin.MVM_updateRelease === "function")) {
+    const submitted = submitRefUpdateThroughParent(parentWin, ref);
+    // Older MVM_exec implementations returned undefined after a successful
+    // submit. Only an explicit false is a rejection.
+    if (submitted === false) {
       appendCliText(`[${new Date().toLocaleString()}] Parent rejected or deduplicated ${desc}.\n`, { scroll: 'force' });
       isUpdateInProgress = false;
       stopUpdateSpinner("Error");
