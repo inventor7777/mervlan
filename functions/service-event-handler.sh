@@ -12,7 +12,7 @@
 #  |__/     |__/ \_______/|__/          \_/    |________/|__/  |__/|__/  \__/  #
 #                                                                              #
 # ============================================================================ #
-#          - File: service-event-handler.sh || version="0.58"                  #
+#          - File: service-event-handler.sh || version="0.59"                  #
 # ============================================================================ #
 # - Purpose:    Event handler for http and service events                      #
 # ============================================================================ #
@@ -115,6 +115,13 @@ logger -t "VLANMgr" "handler: RAW='${RAW}' TYPE='${TYPE}' EVENT='${EVENT}' (args
 # ========================================================================== #
 
 SETTINGS_FILE="/jffs/addons/mervlan/settings/settings.json"
+CUSTOM_SETTINGS_FILE="/jffs/addons/custom_settings.txt"
+
+get_action_request_token() {
+  grep '^vlanmgr_action_request_token=' "$CUSTOM_SETTINGS_FILE" 2>/dev/null | \
+    head -n1 | cut -d'=' -f2- | \
+    tr -cd 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-'
+}
 
 json_get_flag() {
     key="$1"
@@ -145,7 +152,7 @@ case "${TYPE}_${EVENT}" in
   save_vlanmgr|apply_vlanmgr|sync_vlanmgr|executenodes_vlanmgr|\
   executenodesonly_vlanmgr|genkey_vlanmgr|enableservice_vlanmgr|\
   disableservice_vlanmgr|checkservice_vlanmgr|collectclients_vlanmgr|\
-  clearclilog_vlanmgr|update_vlanmgr|updatedev_vlanmgr|hwprobe_vlanmgr|macrefresh_vlanmgr|\
+  clearclilog_vlanmgr|update_vlanmgr|updatedev_vlanmgr|updaterelease_vlanmgr|hwprobe_vlanmgr|macrefresh_vlanmgr|\
   macclientmeta_vlanmgr)
     APP_EVENT=1
     ;;
@@ -154,6 +161,19 @@ esac
 if [ "$IS_NODE_FLAG" -eq 1 ] && [ "$APP_EVENT" -eq 1 ]; then
   logger -t "VLANMgr" "handler: ignoring ${TYPE}_${EVENT} on node (IS_NODE=1)"
   exit 0
+fi
+
+# ========================================================================== #
+# PAUSE GUARD — Suppress router-triggered events when PAUSE is active        #
+# ========================================================================== #
+# APP_EVENT=1 (UI buttons) always pass through so the UI remains responsive.
+# APP_EVENT=0 (router-native events like wifi/eth changes) are suppressed.
+if [ "$APP_EVENT" = "0" ] && [ -s "$SETTINGS_FILE" ]; then
+  _pause_flag=$(json_get_flag PAUSE off "$SETTINGS_FILE" 2>/dev/null)
+  if [ "$_pause_flag" = "on" ]; then
+    logger -t "VLANMgr" "handler: PAUSED — suppressed router event '${RAW}'"
+    exit 0
+  fi
 fi
 
 # ========================================================================== #
@@ -410,11 +430,13 @@ case "${TYPE}_${EVENT}" in
     ;;
   enableservice_vlanmgr)
     # Enable MerVLAN auto-start on boot (triggered by service toggle)
-    dispatch_if_executable "/jffs/addons/mervlan/functions/mervlan_boot.sh" enable
+    _action_token="$(get_action_request_token)"
+    dispatch_if_executable "/jffs/addons/mervlan/functions/mervlan_boot.sh" enable "$_action_token"
     ;;
   disableservice_vlanmgr)
     # Disable MerVLAN auto-start on boot (triggered by service toggle)
-    dispatch_if_executable "/jffs/addons/mervlan/functions/mervlan_boot.sh" disable
+    _action_token="$(get_action_request_token)"
+    dispatch_if_executable "/jffs/addons/mervlan/functions/mervlan_boot.sh" disable "$_action_token"
     ;;
   checkservice_vlanmgr)
     # Check MerVLAN service status (triggered by status query)
@@ -437,6 +459,19 @@ case "${TYPE}_${EVENT}" in
   updatedev_vlanmgr)
     # Update MerVLAN addon from development channel (triggered by update request)
     dispatch_if_executable "/jffs/addons/mervlan/functions/update_mervlan.sh" update dev
+    ;;
+  updaterelease_vlanmgr)
+    # Update MerVLAN addon to a specific tagged release or custom branch
+    # Ref is written to custom_settings.txt by Merlin (not nvram) via vlanmgr_update_ref key
+    _upd_ref="$(grep '^vlanmgr_update_ref=' /jffs/addons/custom_settings.txt 2>/dev/null | head -n1 | cut -d'=' -f2- | tr -cd 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/._-')"
+    case "$_upd_ref" in
+        refs/tags/v[0-9]*|refs/heads/?*)
+            dispatch_if_executable "/jffs/addons/mervlan/functions/update_mervlan.sh" update "$_upd_ref"
+            ;;
+        *)
+            logger -t "VLANMgr" "handler: updaterelease_vlanmgr - invalid or missing ref '$_upd_ref'"
+            ;;
+    esac
     ;;
   hwprobe_vlanmgr)
     # Re-run hardware probe to refresh the Hardware profile in settings.json
