@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <!-- mervlan.asp version="0.52" -->
+  <!-- mervlan.asp version="0.53" -->
 <meta http-equiv="X-UA-Compatible" content="IE=Edge">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta http-equiv="Pragma" content="no-cache">
@@ -462,7 +462,10 @@ function MVM_collectClients(opts)            { return MVM_exec("collectclients_v
 function MVM_clearCliLog(opts)               { return MVM_exec("clearclilog_vlanmgr",   null,        mvmOptsFor("clearclilog_vlanmgr",   opts)); }
 function MVM_update(opts)                    { return MVM_exec("update_vlanmgr",        null,        mvmOptsFor("update_vlanmgr",        opts)); }
 function MVM_updateDev(opts)                 { return MVM_exec("updatedev_vlanmgr",     null,        mvmOptsFor("updatedev_vlanmgr",     opts)); }
-function MVM_updateRelease(ref, opts)        { return MVM_exec("updaterelease_vlanmgr", { vlanmgr_update_ref: ref }, mvmOptsFor("updaterelease_vlanmgr", opts)); }
+// Ref-based updates intentionally use the legacy development update event.
+// Older installed service-event handlers already understand this event; the
+// updater consumes vlanmgr_update_ref and replaces the fallback "dev" target.
+function MVM_updateRelease(ref, opts)        { return MVM_exec("updatedev_vlanmgr", { vlanmgr_update_ref: ref }, mvmOptsFor("updatedev_vlanmgr", opts)); }
 function MVM_hwprobe(opts)                    { return MVM_exec("hwprobe_vlanmgr",       null,        mvmOptsFor("hwprobe_vlanmgr",       opts)); }
 function MVM_macRefresh(opts)                 { return MVM_exec("macrefresh_vlanmgr",    null,        mvmOptsFor("macrefresh_vlanmgr",    opts)); }
 function MVM_macClientMeta(opts)             { return MVM_exec("macclientmeta_vlanmgr", null,        mvmOptsFor("macclientmeta_vlanmgr", opts)); }
