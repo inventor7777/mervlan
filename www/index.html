@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!-- index.html version="0.53.20-dev" -->
+  <!-- index.html version="0.53.21-dev" -->
   <meta charset="utf-8" />
   <title>MerVLAN Manager</title>
   <link rel="stylesheet" href="vlan_form_style.css" />
@@ -499,6 +499,7 @@
           <option value="main">Stable (releases)</option>
           <option value="main_direct">Stable (latest only)</option>
           <option value="dev">Development (dev)</option>
+          <option value="custom">Custom branch (dev only)</option>
         </select>
         <p id="channelCapabilityHint" class="channel-capability-hint"></p>
       </div>
@@ -6393,7 +6394,7 @@ async function checkForUpdates() {
 
   if (!statusEl || !detailsSection || !comparisonEl || !runUpdateBtn || !channelSelect || !checkBtn) return;
 
-  const channel = channelSelect.value || "main"; // "main", "main_direct", or "dev"
+  const channel = channelSelect.value || "main";
   const current = getIndexHtmlVersion() || "0.0";
 
   statusEl.textContent = "Checking...";
@@ -6405,7 +6406,15 @@ async function checkForUpdates() {
   checkBtn.disabled = true;
 
   try {
-    if (channel === "main") {
+    if (channel === "custom") {
+      const customBranchSection = document.getElementById("customBranchSection");
+      const customBranchInput = document.getElementById("customBranchInput");
+      if (customBranchSection) customBranchSection.style.display = "block";
+      if (detailsSection) detailsSection.style.display = "block";
+      if (comparisonEl) comparisonEl.textContent = "Enter a branch name, then click Install branch.";
+      if (customBranchInput) customBranchInput.focus();
+      statusEl.textContent = "";
+    } else if (channel === "main") {
       const releases = await fetchReleasesFromAPI();
       if (!releases || releases.length === 0) throw new Error("No releases found");
 
@@ -6554,10 +6563,6 @@ function populateReleaseDropdown(releases) {
     opt.textContent = r.tag + (r.date ? "  \u2014  " + r.date : "");
     releaseSelect.appendChild(opt);
   });
-  const customOpt = document.createElement("option");
-  customOpt.value = "__custom_branch__";
-  customOpt.textContent = "\u26A0 Custom branch (dev only)...";
-  releaseSelect.appendChild(customOpt);
 }
 
 function updateReleaseComparison(tagName, current, runUpdateBtn, comparisonEl, downgradeWarn, detailsSection) {
@@ -6621,21 +6626,6 @@ function onReleaseSelectChange() {
   const downgradeWarn = document.getElementById("downgradeWarning");
   const detailsSection = document.getElementById("updateDetailsSection");
 
-  if (selectedTag === "__custom_branch__") {
-    if (customBranchSection) customBranchSection.style.display = "block";
-    if (customBranchInput) customBranchInput.value = "";
-    if (changelogToggleSection) changelogToggleSection.style.display = "none";
-    if (comparisonEl) comparisonEl.textContent = "Enter a branch name above, then click Install.";
-    if (downgradeWarn) downgradeWarn.style.display = "none";
-    if (detailsSection) detailsSection.style.display = "block";
-    if (runUpdateBtn) runUpdateBtn.style.display = "none";
-    hideChangelogDisplay();
-    const toggleBtn = document.getElementById("toggleChangelogBtn");
-    if (toggleBtn) toggleBtn.textContent = "Show Changelog";
-    if (customBranchInput) setTimeout(() => customBranchInput.focus(), 50);
-    return;
-  }
-
   if (customBranchSection) customBranchSection.style.display = "none";
   if (customBranchInput) customBranchInput.value = "";
   if (changelogToggleSection) changelogToggleSection.style.display = "block";
@@ -6653,7 +6643,7 @@ function onCustomBranchInput() {
   const branch = input.value.trim();
   const valid = branch.length > 0 &&
     /^[a-zA-Z0-9][a-zA-Z0-9._\-\/]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/.test(branch) &&
-    branch.indexOf("//") === -1;
+    branch.indexOf("//") === -1 && branch.indexOf("..") === -1 && !branch.endsWith(".lock");
   if (valid) {
     runUpdateBtn.textContent = "Install branch";
     runUpdateBtn.classList.add("update-btn--warn");
@@ -6668,7 +6658,8 @@ function onCustomBranchInput() {
 
 function onChannelSelectChange() {
   const channelSelectEl = document.getElementById("versionChannelSelect");
-  updateChannelCapabilityHint(channelSelectEl ? channelSelectEl.value : "main");
+  const selectedChannel = channelSelectEl ? channelSelectEl.value : "main";
+  updateChannelCapabilityHint(selectedChannel);
   const detailsSection = document.getElementById("updateDetailsSection");
   const releaseSelectSection = document.getElementById("releaseSelectSection");
   const runUpdateBtn = document.getElementById("runUpdateBtn");
@@ -6679,6 +6670,11 @@ function onChannelSelectChange() {
   if (detailsSection) detailsSection.style.display = "none";
   if (releaseSelectSection) releaseSelectSection.style.display = "none";
   if (runUpdateBtn) runUpdateBtn.style.display = "none";
+  if (runUpdateBtn) {
+    runUpdateBtn.removeAttribute("data-channel");
+    runUpdateBtn.removeAttribute("data-ref");
+    runUpdateBtn.removeAttribute("data-latest");
+  }
   if (changelogToggleSection) changelogToggleSection.style.display = "none";
   if (statusEl) { statusEl.textContent = ""; statusEl.style.color = ""; }
   if (downgradeWarn) downgradeWarn.style.display = "none";
@@ -6689,6 +6685,14 @@ function onChannelSelectChange() {
   hideChangelogDisplay();
   const toggleBtn = document.getElementById("toggleChangelogBtn");
   if (toggleBtn) toggleBtn.textContent = "Show Changelog";
+
+  if (selectedChannel === "custom") {
+    if (customBranchSection) customBranchSection.style.display = "block";
+    if (detailsSection) detailsSection.style.display = "block";
+    const comparisonEl = document.getElementById("updateComparisonText");
+    if (comparisonEl) comparisonEl.textContent = "Enter a branch name, then click Install branch.";
+    if (customBranchInput) setTimeout(() => customBranchInput.focus(), 50);
+  }
 }
 
 function updateChannelCapabilityHint(channel) {
@@ -6703,6 +6707,9 @@ function updateChannelCapabilityHint(channel) {
       break;
     case "dev":
       hint.innerHTML = "Installs from the dev branch. May be unstable.<br>No API \u2014 never rate limited.";
+      break;
+    case "custom":
+      hint.innerHTML = "Installs an explicitly named GitHub branch.<br>Development use only.";
       break;
     default:
       hint.textContent = "";
@@ -6772,9 +6779,12 @@ function submitRefUpdateThroughParent(parentWin, ref) {
   const payload = { vlanmgr_update_ref: ref };
   const opts = { loading: false, skipRefresh: true, waitSec: 0, minLoadingMs: 0 };
 
-  // MVM_exec and updatedev_vlanmgr exist in older MerVLAN parent pages and
-  // service-event handlers. Submit the ref directly instead of trusting a
-  // possibly stale MVM_updateRelease wrapper to preserve the selected target.
+  // New parents encode the ref into the service-event action itself, avoiding
+  // custom_settings.txt timing/persistence entirely.
+  if (parentWin && typeof parentWin.MVM_updateRef === "function") {
+    return parentWin.MVM_updateRef(ref, opts);
+  }
+  // Compatibility fallback for older parent pages.
   if (parentWin && typeof parentWin.MVM_exec === "function") {
     return parentWin.MVM_exec("updatedev_vlanmgr", payload, opts);
   }
@@ -6787,9 +6797,29 @@ function submitRefUpdateThroughParent(parentWin, ref) {
 async function runUpdateFromModal(buttonEl) {
   if (!buttonEl) return;
 
-  const channel = buttonEl.dataset.channel;
-  const ref = buttonEl.dataset.ref || "";
-  const latest = buttonEl.dataset.latest || "";
+  const selectedChannelEl = document.getElementById("versionChannelSelect");
+  const selectedChannel = selectedChannelEl ? selectedChannelEl.value : "";
+  let channel = buttonEl.dataset.channel;
+  let ref = buttonEl.dataset.ref || "";
+  let latest = buttonEl.dataset.latest || "";
+
+  // Custom targets are derived from the live controls at click time. Never
+  // trust release metadata that may remain on the shared button.
+  if (selectedChannel === "custom") {
+    const branchInput = document.getElementById("customBranchInput");
+    const branch = branchInput ? branchInput.value.trim() : "";
+    const valid = branch.length > 0 &&
+      /^[a-zA-Z0-9][a-zA-Z0-9._\-\/]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/.test(branch) &&
+      branch.indexOf("//") === -1 && branch.indexOf("..") === -1 && !branch.endsWith(".lock");
+    if (!valid) {
+      const statusEl = document.getElementById("updateStatusText");
+      if (statusEl) { statusEl.textContent = "Enter a valid custom branch name."; statusEl.style.color = "#ff8a8a"; }
+      return;
+    }
+    channel = "custom";
+    latest = branch;
+    ref = "refs/heads/" + branch;
+  }
 
   // Dev and main_direct channels: use queueServiceAction directly (no version ref needed)
   if (channel === "dev" || channel === "main_direct") {
@@ -6844,7 +6874,7 @@ async function runUpdateFromModal(buttonEl) {
   appendCliText(`\n[${new Date().toLocaleString()}] Queued action: ${desc}\n`, { scroll: 'force' });
 
   const parentWin = window.parent;
-  if (parentWin && (typeof parentWin.MVM_exec === "function" || typeof parentWin.MVM_updateRelease === "function")) {
+  if (parentWin && (typeof parentWin.MVM_updateRef === "function" || typeof parentWin.MVM_exec === "function" || typeof parentWin.MVM_updateRelease === "function")) {
     const submitted = submitRefUpdateThroughParent(parentWin, ref);
     // Older MVM_exec implementations returned undefined after a successful
     // submit. Only an explicit false is a rejection.
