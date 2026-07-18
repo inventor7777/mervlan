@@ -124,7 +124,9 @@ function MVM_exec(actionScriptName, settingsObjOrNull, opts) {
   opts = opts || {};
 
   var isEncodedUpdateRef = /^updateref_vlanmgr_[ht]_[0-9a-f]+$/.test(actionScriptName);
-  if (!MVM_ALLOWED_ACTIONS.has(actionScriptName) && !isEncodedUpdateRef) {
+  var verifiedActionMatch = /^(.+)_vrt_([0-9a-f]+)$/.exec(actionScriptName);
+  var isVerifiedAction = !!(verifiedActionMatch && MVM_ALLOWED_ACTIONS.has(verifiedActionMatch[1]));
+  if (!MVM_ALLOWED_ACTIONS.has(actionScriptName) && !isEncodedUpdateRef && !isVerifiedAction) {
     if (window.console && typeof console.warn === "function") {
       console.warn("[MVM] blocked disallowed action", actionScriptName);
     }
@@ -448,8 +450,17 @@ function MVM_triggerVerified(actionScriptName, requestToken, payload, opts) {
   Object.keys(sourcePayload).forEach(function(key) {
     verifiedPayload[key] = sourcePayload[key];
   });
-  verifiedPayload.vlanmgr_action_request_token = String(requestToken || "");
-  return MVM_exec(actionScriptName, verifiedPayload, mvmOptsFor(actionScriptName, opts));
+  var safeToken = String(requestToken || "");
+  if (!safeToken || !/^[A-Za-z0-9._-]+$/.test(safeToken)) return false;
+  // Carry the correlation token in the event name. custom_settings.txt remains
+  // a compatibility payload only; action completion no longer depends on it.
+  verifiedPayload.vlanmgr_action_request_token = safeToken;
+  var tokenHex = "";
+  for (var i = 0; i < safeToken.length; i++) {
+    tokenHex += ("0" + safeToken.charCodeAt(i).toString(16)).slice(-2);
+  }
+  var verifiedActionName = actionScriptName + "_vrt_" + tokenHex;
+  return MVM_exec(verifiedActionName, verifiedPayload, mvmOptsFor(actionScriptName, opts));
 }
 function MVM_apply(opts)                     { return MVM_exec("apply_vlanmgr",         null,        mvmOptsFor("apply_vlanmgr",         opts)); }
 function MVM_sync(opts)                      { return MVM_exec("sync_vlanmgr",          null,        mvmOptsFor("sync_vlanmgr",          opts)); }
