@@ -84,6 +84,8 @@ This gives you a repeatable, UI‑driven way to deploy and maintain VLANs on Asu
 - Per‑LAN‑port VLAN tagging for access ports.
 - **Experimental MAIN → NODE trunk support** for nodes connected directly to selected LAN ports on the main unit.
 - Built‑in “Clients Overview” panel to see which VLAN clients are active on each node.
+- Central **Settings** modal for STP, Dry Run, ENS, Apply on Boot, Pause Event Reactions, and Experimental Features.
+- Settings are saved and verified in order before action-backed controls run. Successful saves leave the modal open with a green confirmation; partial node failures remain visible.
 
 **Multi‑AP / Multi‑node aware**
 
@@ -218,12 +220,16 @@ From `/jffs/addons/mervlan` on the AP:
 
 MerVLAN can be updated in place without losing its existing configuration or SSH keys.
 
-The recommended method is through the web UI. Click the version button in the bottom-right corner, select the branch you want to use, check for updates, and install the available version.
+The recommended method is through the web UI. Click the version button in the bottom-right corner and select a channel:
 
-- **`main`** is the recommended public beta and release branch.
-- **`dev`** is the active development branch and may contain less-tested changes.
+| UI channel | What it does |
+| --- | --- |
+| **Stable (releases)** | Uses GitHub release metadata to show a tagged-version picker. Supports upgrades and downgrades, with a warning before installing an older release. The selected tag archive is installed; release assets are not used. |
+| **Stable (latest only)** | Installs the latest `main` version without the GitHub API or a version picker. Use this for normal stable updates or to switch a development build back to stable. |
+| **Development (dev)** | Installs directly from `dev` without the GitHub API. May contain unfinished or less-tested changes. |
+| **Custom branch (dev only)** | Installs an explicitly named branch such as `dev-test1`. Intended only for requested development testing. |
 
-The web UI supports switching between `main` and `dev` when the selected branch contains a newer version. Downgrading through the web UI is not currently supported, but can be done manually over SSH.
+For Stable releases, click <kbd>Check for updates</kbd> and select a tagged version. For a custom branch, selecting the channel immediately displays the branch field. Review the upgrade, switch, or downgrade message, start the installation, leave it running until completion, and refresh the UI when prompted.
 
 ### Manual Update Commands
 
@@ -232,12 +238,14 @@ The web UI supports switching between `main` and `dev` when the selected branch 
 | `sh functions/update_mervlan.sh` | Update to the latest version from the `main` public beta channel. |
 | `sh functions/update_mervlan.sh dev` | Update to the latest version from the `dev` development channel. |
 | `sh functions/update_mervlan.sh restore` | Open the restore menu and restore a previously created local MerVLAN backup. |
+| `sh functions/update_mervlan.sh BRANCH` | Install an explicitly named custom development branch. |
+| `sh functions/update_mervlan.sh refs/tags/v0.53.15` | Install an explicit tagged release; replace the example with the required tag. |
 
-The manual updater supports switching between the `main` and `dev` branches. If an update does not behave as expected, or the configuration becomes corrupted, the built-in restore function can return MerVLAN to one of its locally stored backups.
+The manual updater supports switching between `main`, `dev`, custom branches, and explicit tag refs. If an update does not behave as expected, or the configuration becomes corrupted, the built-in restore function can return MerVLAN to one of its locally stored backups.
 
 The updater will:
 
-- Download and validate the selected version from GitHub.
+- Download and validate the selected branch or tag archive from GitHub.
 - Stage the new files and perform an atomic replacement.
 - Preserve `settings/settings.json`, SSH keys, MAC Shield databases, and local backups whenever possible.
 - Re-run the hardware probe.
@@ -245,7 +253,7 @@ The updater will:
 - Synchronize configured remote nodes when SSH is enabled and the nodes are reachable.
 
 > [!TIP]
-> For custom branches, manual downgrades, restore instructions, and additional update commands, see [Updating MerVLAN in the Help Guide](docs/HELP.md#updating-mervlan).
+> For channel details, custom branches, tagged downgrades, restore instructions, and additional update commands, see [Updating MerVLAN in the Help Guide](docs/HELP.md#updating-mervlan).
 
 ---
 
@@ -417,8 +425,9 @@ Models added to the support table are excluded from this list. Any help testing 
 MerVLAN uses two primary branches:
 
 - **`main`** is the recommended public beta and release branch.
-  - Normal installations and updates use this branch.
+  - Normal latest-stable installations and updates use this branch.
   - Tagged GitHub pre-releases are created from commits on `main`.
+  - The Stable releases channel installs the selected tag archive rather than a GitHub release asset.
   - Development changes reach `main` through controlled merges from `dev`.
 
 - **`dev`** is the active development and integration branch.
@@ -430,7 +439,7 @@ For development and testing, temporary branches may also be created from `dev`. 
 
 These branches are temporary and are only intended for active development and targeted testing. Unless you are directly involved in testing a specific branch, using one is strongly discouraged unless requested by the maintainer. They may contain incomplete, experimental, or untested code and should not be considered release versions.
 
-MerVLAN can be manually updated to one of these branches through SSH. See the [MerVLAN Help Guide, CLI Usage](docs/HELP.md#7-cli-usage) for instructions.
+Temporary branches can be installed through **Custom branch (dev only)** in the version modal or manually through SSH. See [Updating MerVLAN](docs/HELP.md#updating-mervlan) and the [CLI Usage](docs/HELP.md#7-cli-usage) reference for instructions.
 
 ### Contributing
 

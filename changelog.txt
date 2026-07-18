@@ -21,6 +21,13 @@ Fixed: GUI custom-branch and tagged-release updates not starting
 - Stable latest, dev, custom branch, and tagged-release codeload archives are all
   validated through the same updater target-resolution flow.
 
+Documentation:
+- Updated README.md and docs/HELP.md to mirror the current addon UI and behavior,
+  including the Settings modal controls, verified save/action sequencing,
+  Apply-on-Boot status and partial-node handling, the five-minute health cron,
+  all four update channels, tagged release selection and downgrades, custom
+  branch installs, and the current manual branch/tag update commands.
+
 ################ END OF CURRENT CHANGELOG
 
 mervlan v0.53.17-dev
