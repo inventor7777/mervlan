@@ -540,7 +540,7 @@ The console shows real-time output during applies and node operations.
 
 ### Full Log Viewer (Separate Window)
 
-Click <kbd>View Full Logs</kbd> for timestamped, persistent logs across all operations. Per-file view: vlan_manager, cli_output, boot_wrap, heal.
+Click <kbd>View Full Logs</kbd> for timestamped logs across all operations. The viewer provides **VLAN Manager**, **CLI Output**, and **Boot & Startup** tabs. Health/heal activity is intentionally recorded in the VLAN Manager and CLI logs rather than a separate heal file.
 
 Log files on the router (stored in RAM - cleared on reboot):
 
@@ -616,7 +616,7 @@ NODE2 (192.168.1.51):  br30
 | -------------------------------------- | ---------------------------------------------------------------------- |
 | VLANs disappear after reboot           | Open Settings, enable Apply on Boot, and click Apply                    |
 | Apply runs but VLANs don't appear      | Dry Run is likely still ON - look for `[DRY RUN]` in CLI               |
-| VLANs disappear after wireless restart | restart_wireless race condition - auto-heal handles it; check heal log |
+| VLANs disappear after wireless restart | restart_wireless race condition - auto-heal handles it; check the VLAN Manager log |
 | Node not applying                      | View Full Logs for SSH error; run <kbd>Sync Nodes</kbd> then apply again |
 
 > [!TIP]
@@ -657,11 +657,27 @@ Temporary test branches, normally named using the `dev-test<number>` format, may
 4. Leave **Clear existing logs before update** unchecked to retain history within the configured bounds, or select it to empty existing logs immediately before the new update log begins.
 5. Review the upgrade, channel-switch, or downgrade message and optionally open the changelog.
 6. Click the displayed update or install button and leave the operation running until completion.
-7. Refresh the web UI when prompted so the newly installed files are loaded.
+7. Follow the current operation in the modal. Its status is based only on log output written after that update was queued, so another update can be started after a completed one without reusing the previous success result.
+8. On success, the modal reports whether **Undo Update** is available until reboot. Refresh the web UI when prompted so the newly installed files are loaded.
 
 Every channel displays the same downgrade warning when its known target version is older than the installed version. Stable releases allow arbitrary tagged-version selection; Stable latest and Development allow installing their current branch head even when it is older, but do not provide an older-version picker. Custom branches are compared when their changelog exposes a version. Use a tagged release, an explicit ref, or a local restore point when reverting to a specific older build. Attempting to close the modal while an update is active displays a confirmation warning; closing the UI does not safely cancel the backend operation.
 
-The **Restore** tab is the backup-management frontend. Select <kbd>Check Backups</kbd> to load the current on-router inventory. The page always reports persistent JFFS backup usage/available space and temporary `/tmp` undo usage/available space. Automatic and manual archives can both be selected for restore or deletion. The tab can also create tagged manual backups, permanently delete every persistent backup after an additional `DELETE ALL` confirmation, and expose temporary **Undo Restore** or **Undo Update** actions when their backend sources are still present. Update, backup, restore, undo, and deletion share one maintenance lock, so overlapping destructive operations are rejected.
+### Managing backups through the Restore tab
+
+The **Restore** tab is the backup-management frontend. Its controls are:
+
+| Control | What it does |
+| --- | --- |
+| <kbd>Check Backups</kbd> | Loads or refreshes the on-router inventory. The tab reports used and available space for persistent JFFS backups and temporary `/tmp` undo storage. |
+| **Backup list** | Displays the three rotating automatic backups and up to three separately retained manual backups. Select an automatic or manual archive to enable its restore and deletion actions. |
+| <kbd>Restore Selected</kbd> | Confirms and restores the selected archive as a complete MerVLAN installation, settings, data, public UI, hooks, and configured-node state. |
+| <kbd>Delete Selected</kbd> | Permanently deletes the selected persistent archive after confirmation. |
+| <kbd>Delete All Backups</kbd> | Permanently empties `/jffs/addons/mervlan_backups` after a second `DELETE ALL` confirmation. Its tooltip describes the scope before the button is used. |
+| **Manual Backup Tag** and <kbd>Create Backup</kbd> | Creates a persistent manual backup. Tags accept 1-24 letters, numbers, `_`, or `-`; three manual slots are available. |
+| <kbd>Undo Restore</kbd> | Restores the installation displaced by the last successful restore when its temporary `/tmp` file is still present. The undo file is consumed after success and is always lost on reboot. |
+| <kbd>Undo Update</kbd> | Returns to the automatic pre-update backup referenced by the temporary undo marker. The shortcut is lost on reboot; it also becomes unavailable if its referenced backup is deleted. |
+
+Create, delete, restore, undo, and update confirmations use a centered in-addon dialog. Leave both dialogs open while an operation is running. All maintenance actions share one lock, disable conflicting controls, and report progress in the modal, so overlapping destructive operations are rejected. Select <kbd>Check Backups</kbd> again after out-of-band CLI maintenance to refresh the displayed inventory.
 
 ### Manual Update Commands
 
@@ -719,12 +735,14 @@ MerVLAN keeps the three newest automatic backups created during updates and up t
 
 1. Open the version modal and select **Restore**.
 2. Select <kbd>Check Backups</kbd>.
-3. Choose any automatic or manual archive.
-4. Select <kbd>Restore Selected</kbd> and confirm the exact archive.
-5. Leave the modal open while validation, activation, public refresh, hook setup, and node synchronization run.
-6. Select <kbd>Refresh UI</kbd> when restore completes. An older restore point may load an older version of the interface.
+3. Check the persistent and temporary storage figures before creating a backup or starting a restore.
+4. Choose any automatic or manual archive.
+5. Select <kbd>Restore Selected</kbd> and confirm the exact archive in the centered confirmation dialog.
+6. Leave the modal open while validation, activation, public refresh, hook setup, and node synchronization run.
+7. Read the completion message for partial node warnings and the availability of the reboot-volatile **Undo Restore** file.
+8. Select <kbd>Refresh UI</kbd> when restore completes. An older restore point may load an older version of the interface.
 
-The same tab can delete the selected archive. **Delete All Backups** requires entering `DELETE ALL` and permanently wipes the contents of `/jffs/addons/mervlan_backups`. If it deletes the automatic archive referenced by Undo Update, that volatile shortcut is cleared. The separate Undo Restore file in `/tmp` is not part of persistent delete-all.
+The same tab creates tagged manual backups and deletes selected archives. **Delete All Backups** requires entering `DELETE ALL` and permanently wipes the contents of `/jffs/addons/mervlan_backups`. If it deletes the automatic archive referenced by Undo Update, that volatile shortcut is cleared. The separate Undo Restore file in `/tmp` is not part of persistent delete-all. Space is checked before backup creation, restore staging, and temporary undo creation; the displayed space report helps plan these operations but does not replace the backend check made when the action starts.
 
 #### Through SSH
 
@@ -798,7 +816,7 @@ These commands are useful when working over SSH on the main router. Most users s
 | <pre>`sh functions/update_mervlan.sh refs/tags/v0.53.15`</pre> | Install an explicit tagged release. Replace the example tag with the required release tag. |
 
 > [!NOTE]
-> Updates preserve your settings, SSH keys, MAC Shield databases, and local backups whenever possible. After updating, MerVLAN refreshes the public web UI files and reapplies the required service hooks. Refresh your browser after the update to load the latest web interface.
+> Updates preserve your settings, SSH keys, MAC Shield databases, local backups, and retained logs whenever possible. After updating, MerVLAN comprehensively rebuilds the public/runtime projection and explicitly reconciles the required main and node service hooks. Refresh your browser after the update to load the latest web interface.
 
 ### Install, Reinstall, and Uninstall
 
@@ -809,12 +827,18 @@ These commands are useful when working over SSH on the main router. Most users s
 | <pre>`TMP_DIR=/tmp/mervlan_staging sh install.sh download`</pre> | Download the MerVLAN tarball to a staging directory without installing it. |
 | <pre>`TMP_DIR=/tmp/mervlan_staging sh install.sh tarball`</pre> | Install MerVLAN from a previously downloaded tarball in the staging directory. |
 | <pre>`sh install.sh credentials`</pre> | Update only the stored SSH username and SSH port. |
+| <pre>`sh install.sh reinstall`</pre> | Rebuild and verify the complete public/runtime projection from the existing local addon tree while preserving existing logs. This does not first remove stale public publication and deliberately does not reconcile service hooks or nodes. |
+| <pre>`sh uninstall.sh reinstall && sh install.sh reinstall`</pre> | Recommended log-preserving refresh of the web UI/menu registration, public assets, settings/log/result symlinks, SSH-key publication, permissions, runtime directories, and missing log files from the currently installed source tree. Existing boot, cron, service-hook, and node state is left in place. |
 | <pre>`sh uninstall.sh`</pre> | Remove the web UI entry and service hooks while preserving the addon files, settings, and data. |
 | <pre>`sh uninstall.sh full`</pre> | Perform a full uninstall. Removes the web UI, service hooks, addon files, settings, data, and node-side installations where possible. |
-| <pre>`sh uninstall.sh && sh install.sh`</pre> | Reinstall the web UI and service hooks using the existing local addon files. Useful after manually changing `mervlan.asp`, public UI files, or installation wiring without performing a full update. Note that boot application and cron will be disabled. Re-enable them through **Settings -> Apply on Boot** afterwards. |
+| <pre>`sh uninstall.sh && sh install.sh`</pre> | Perform the older full public/hook teardown and reinstallation from existing files. This is a real service-state change: cron is disabled and the previous boot state is not transactionally preserved or reconciled. Review and reapply **Settings -> Apply on Boot** afterwards. Existing log files may be reset by the normal install path. |
+
+The `reinstall` mode is primarily the safe publication phase used inside update, restore, undo, and rollback workflows. The surrounding updater owns the complete lifecycle: it locks maintenance, stops active work, removes old-version template injections, replaces or restores the source tree, calls the log-preserving reinstall phase, synchronizes configured nodes, installs the target templates, and then applies the saved `BOOT_ENABLED` state. Keeping that ownership separate prevents a public refresh from unexpectedly changing runtime or node state.
+
+The paired manual command `sh uninstall.sh reinstall && sh install.sh reinstall` is appropriate after editing local ASP, HTML, JavaScript, public assets, or publication wiring without changing the installed version. It does **not** download files, create an update backup, synchronize nodes, refresh version-dependent template injections, or apply settings. Use the updater or restore flow whenever the source version, templates, settings, databases, or node installation must change. If the install half is interrupted, rerun `sh install.sh reinstall` from the intact addon directory to complete and verify publication.
 
 > [!CAUTION]
-> **Be careful when using the full uninstall command.** It is intended for complete removal or a clean reinstall. Use the normal uninstall and install commands when you only need to refresh the web UI mount, public files, or service hooks.
+> **Be careful when using normal or full uninstall.** Full uninstall is intended for complete removal or a clean installation. For a public/runtime refresh that must preserve logs and current service state, use the paired `reinstall` command. Do not use that narrower mode as a replacement for update or restore when versions or injected templates change.
 
 ### Service and Boot Control
 

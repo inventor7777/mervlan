@@ -1164,8 +1164,18 @@ create_logs() {
         fi
     done
 
+    # boot_wrap may be the process currently invoking install.sh. Always make
+    # its log available, but never truncate an active boot/startup sequence.
+    log_file="$TMP_DIR/logs/boot_wrap.log"
+    if [ ! -f "$log_file" ]; then
+        : > "$log_file" || { printf 'ERROR: Failed to init %s\n' "${log_file##*/}" >&2; return 1; }
+    fi
+
     chmod 755 "$TMP_DIR" "$TMP_DIR/logs"
-    chmod 644 "$TMP_DIR/logs/cli_output.log" "$TMP_DIR/logs/vlan_manager.log"
+    chmod 644 \
+        "$TMP_DIR/logs/cli_output.log" \
+        "$TMP_DIR/logs/vlan_manager.log" \
+        "$TMP_DIR/logs/boot_wrap.log"
 }
 
 # Reinstall is used transactionally by update/restore, so its caller needs a
@@ -1190,7 +1200,8 @@ verify_reinstall_projection() {
         "$PUBLIC_DIR/diagrams/topology-3_standalone-ap.svg" \
         "$PUBLIC_DIR/diagrams/topology-4_node-to-main.svg" \
         "$TMP_DIR/logs/cli_output.log" \
-        "$TMP_DIR/logs/vlan_manager.log"
+        "$TMP_DIR/logs/vlan_manager.log" \
+        "$TMP_DIR/logs/boot_wrap.log"
     do
         if [ ! -f "$required" ]; then
             printf '[install] ERROR: Reinstall projection missing %s\n' "$required" >&2
@@ -1202,6 +1213,7 @@ verify_reinstall_projection() {
         "$PUBLIC_DIR/settings/settings.json" \
         "$PUBLIC_DIR/tmp/logs/cli_output.json" \
         "$PUBLIC_DIR/tmp/logs/vlan_manager.json" \
+        "$PUBLIC_DIR/tmp/logs/boot_wrap.json" \
         "$PUBLIC_DIR/tmp/results/vlan_clients.json"
     do
         if [ ! -L "$required" ]; then
@@ -1431,6 +1443,7 @@ fi
 # Create and log symlinks
 create_link "$TMP_DIR/logs/cli_output.log"              "$PUBLIC_DIR/tmp/logs/cli_output.json"
 create_link "$TMP_DIR/logs/vlan_manager.log"            "$PUBLIC_DIR/tmp/logs/vlan_manager.json"
+create_link "$TMP_DIR/logs/boot_wrap.log"                "$PUBLIC_DIR/tmp/logs/boot_wrap.json"
 create_link "$TMP_DIR/results/vlan_clients.json"        "$PUBLIC_DIR/tmp/results/vlan_clients.json"
 # settings.json symlink is created above with the static asset copies
 

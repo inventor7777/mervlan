@@ -58,12 +58,25 @@ New: Integrated backup and transactional restore management
   lines and 1 MiB by default. The existing health cron performs a cheap due
   gate and invokes the shared helper no more than once per 24 hours; maintenance
   also runs at the end of update, restore, and backup operations.
+- Repeated GUI updates now snapshot the retained VLAN log before submission and
+  evaluate only output appended by the current request. Old success/failure
+  lines can no longer finish a new update early; retained, cleared, and trimmed
+  log transitions are all handled.
+- The log viewer now exposes only the three real addon logs: VLAN Manager, CLI
+  Output, and Boot & Startup. Removed the unused Syslog UI path, fixed immediate
+  tab loading/cache behavior, and added boot_wrap.json publication for every
+  normal or reinstall provisioning path without truncating an active boot log.
+- Restore no longer creates a horizontal scrollbar, and its modal/inventory
+  scrollbars now match the CLI and Active VLAN Clients theme. APMO now expands
+  the addon/modal naturally instead of forcing an unnecessary internal scroller.
 
 Documentation:
 - Updated README.md and docs/HELP.md for the Restore tab, manual backup naming
   and limits, CLI/argument commands, deletion warnings, rollback behavior, and
   the automatic post-restore lifecycle, log policy/limits, comprehensive public
   reprovisioning, template refresh ordering, and final main/node verification.
+  HELP.md now also documents every Update/Restore modal control and the new
+  log-preserving reinstall commands, ownership boundaries, and limitations.
 
 ################ END OF CURRENT CHANGELOG
 

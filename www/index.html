@@ -193,6 +193,9 @@
     .backup-inventory-list {
       max-height: 210px;
       overflow-y: auto;
+      overflow-x: hidden;
+      max-width: 100%;
+      box-sizing: border-box;
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 4px;
       margin-top: 6px;
@@ -225,11 +228,12 @@
     .backup-tooltip-wrap { position: relative; display: inline-flex; }
     .backup-action-tooltip {
       position: absolute;
-      left: 50%;
+      left: auto;
+      right: 0;
       bottom: calc(100% + 8px);
       z-index: 30;
       width: min(330px, 70vw);
-      transform: translateX(-50%);
+      transform: none;
       padding: 7px 9px;
       border: 1px solid rgba(255, 138, 138, 0.5);
       border-radius: 4px;
@@ -253,6 +257,47 @@
     #versionModal {
       max-height: calc(100vh - 32px);
       overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    #versionModal.version-modal--restore,
+    #versionModal.version-modal--restore .backup-inventory-list {
+      scrollbar-width: thin;
+      scrollbar-color: #569AC7 #1F2D35;
+    }
+
+    #versionModal.version-modal--restore::-webkit-scrollbar,
+    #versionModal.version-modal--restore .backup-inventory-list::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    #versionModal.version-modal--restore::-webkit-scrollbar-track,
+    #versionModal.version-modal--restore .backup-inventory-list::-webkit-scrollbar-track {
+      background: #1F2D35;
+    }
+
+    #versionModal.version-modal--restore::-webkit-scrollbar-thumb,
+    #versionModal.version-modal--restore .backup-inventory-list::-webkit-scrollbar-thumb {
+      background: #569AC7;
+      border-radius: 8px;
+      border: 2px solid #1F2D35;
+    }
+
+    #versionModal.version-modal--restore::-webkit-scrollbar-thumb:hover,
+    #versionModal.version-modal--restore .backup-inventory-list::-webkit-scrollbar-thumb:hover {
+      background: #77A5C6;
+    }
+
+    #versionModal.version-modal--restore::-webkit-scrollbar-corner,
+    #versionModal.version-modal--restore .backup-inventory-list::-webkit-scrollbar-corner {
+      background: #1F2D35;
+    }
+
+    #versionRestorePanel {
+      min-width: 0;
+      max-width: 100%;
+      overflow-x: hidden;
     }
 
     .maintenance-confirm-overlay {
@@ -800,7 +845,7 @@
     .adv-override-target-indicator { font-size: 0.95em; font-weight: bold; color: #6cf; margin-bottom: 10px; padding: 4px 0; }
     .adv-override-row.adv-override-disabled { opacity: 0.38; pointer-events: none; }
     .adv-override-error { color: #f66; font-size: 0.92em; margin-top: 6px; padding: 4px 8px; border: 1px solid #f44; border-radius: 3px; background: rgba(255,68,68,0.08); }
-    #advancedOverrideModal .modal__body { max-height: 65vh; overflow-y: auto; }
+    #advancedOverrideModal .modal__body { max-height: none; overflow: visible; }
   </style>
   <div id="advancedOverrideModal" class="modal" style="display:none;">
     <div class="modal__header">
@@ -3701,6 +3746,9 @@ function toggleCliFullsize() {
 
     let updateLogTimer = null;
     let lastUpdateLogLine = "";
+    let lastUpdateLogSnapshot = "";
+    let updateLogBaselineText = "";
+    let updateLogBaselineReady = false;
     let _updateTimeoutId = null;
     let maintenancePollTimer = null;
     let maintenanceTimeoutTimer = null;
@@ -3750,6 +3798,53 @@ function toggleCliFullsize() {
       sec.style.display = show ? "block" : "none";
     }
 
+    function updateLogTextAfterBaseline(text) {
+      const current = String(text || "");
+      const baseline = String(updateLogBaselineText || "");
+      if (!baseline) return current;
+      if (current.startsWith(baseline)) return current.slice(baseline.length);
+
+      // Trimming may remove the beginning of the retained log while leaving
+      // its former last line. Use that line as a boundary when possible. If
+      // the update intentionally cleared/truncated the file, no boundary will
+      // remain and the entire current file belongs to this request.
+      const baselineLines = baseline.replace(/\r\n/g, "\n").split("\n");
+      let anchor = "";
+      for (let i = baselineLines.length - 1; i >= 0; i--) {
+        if (baselineLines[i]) {
+          anchor = baselineLines[i];
+          break;
+        }
+      }
+      if (anchor) {
+        const anchorIndex = current.lastIndexOf(anchor);
+        if (anchorIndex !== -1) {
+          return current.slice(anchorIndex + anchor.length).replace(/^\r?\n/, "");
+        }
+      }
+      return current;
+    }
+
+    async function captureUpdateLogBaseline() {
+      try {
+        const r = await fetch(PATHS.UPDATE_LOG + "?_=" + Date.now());
+        if (r.ok) {
+          updateLogBaselineText = await r.text();
+          lastUpdateLogSnapshot = updateLogBaselineText;
+          updateLogBaselineReady = true;
+          return;
+        }
+        // A missing log is a valid empty baseline.
+        if (r.status === 404) {
+          updateLogBaselineText = "";
+          lastUpdateLogSnapshot = "";
+          updateLogBaselineReady = true;
+        }
+      } catch (e) {
+        // The first successful poll will establish a safe fallback baseline.
+      }
+    }
+
     async function pollUpdateLogOnce() {
       const logLineEl = document.getElementById("updateLogLine");
       if (!logLineEl) return;
@@ -3764,14 +3859,26 @@ function toggleCliFullsize() {
         }
 
         const text = await r.text();
-        if (!text.trim()) {
+        if (!updateLogBaselineReady) {
+          updateLogBaselineText = text;
+          lastUpdateLogSnapshot = text;
+          updateLogBaselineReady = true;
+          return;
+        }
+        if (text === lastUpdateLogSnapshot) {
+          return;
+        }
+        lastUpdateLogSnapshot = text;
+
+        const currentRunText = updateLogTextAfterBaseline(text);
+        if (!currentRunText.trim()) {
           if (!lastUpdateLogLine) {
             logLineEl.textContent = "Waiting for update output...";
           }
           return;
         }
 
-        const lines = text.trim().split(/\r?\n/);
+        const lines = currentRunText.trim().split(/\r?\n/);
         const lastLine = lines[lines.length - 1] || "";
 
         if (!lastLine || lastLine === lastUpdateLogLine) {
@@ -3808,7 +3915,7 @@ function toggleCliFullsize() {
       }
     }
 
-    function startUpdateLogPolling() {
+    async function startUpdateLogPolling() {
       const logLineEl = document.getElementById("updateLogLine");
       if (logLineEl) {
         logLineEl.textContent = "Waiting for update output...";
@@ -3816,8 +3923,14 @@ function toggleCliFullsize() {
       }
 
       lastUpdateLogLine = "";
+      lastUpdateLogSnapshot = "";
+      updateLogBaselineText = "";
+      updateLogBaselineReady = false;
       showUpdateLogSection(true);
-      pollUpdateLogOnce();
+
+      // Capture the retained log before submitting this update. Completion and
+      // failure detection then inspect only content written after this point.
+      await captureUpdateLogBaseline();
 
       if (updateLogTimer) {
         clearInterval(updateLogTimer);
@@ -6165,6 +6278,7 @@ function selectVersionModalTab(tab) {
     restoreTab.setAttribute("aria-selected", restore ? "true" : "false");
   }
   const versionModal = document.getElementById("versionModal");
+  if (versionModal) versionModal.classList.toggle("version-modal--restore", restore);
   if (versionModal && versionModal.style.display !== "none") {
     anchorModalToForm(versionModal);
   }
@@ -7683,7 +7797,7 @@ async function runUpdateFromModal(buttonEl) {
 
   isUpdateInProgress = true;
   startUpdateSpinner();
-  startUpdateLogPolling();
+  await startUpdateLogPolling();
   disableBtnTemporarily(buttonEl, 10000);
   appendCliText(`\n[${new Date().toLocaleString()}] Queued action: ${desc}\n`, { scroll: 'force' });
 
