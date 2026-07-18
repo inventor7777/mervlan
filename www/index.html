@@ -983,10 +983,11 @@
         }
 
         async function fetchLatestVersionFromChangelog(branch) {
-          const effectiveBranch = branch === "dev" ? "dev" : "main";
+          const effectiveBranch = String(branch || "main").trim();
+          const encodedBranch = effectiveBranch.split("/").map(encodeURIComponent).join("/");
           const url =
             "https://raw.githubusercontent.com/r80xcore/mervlan/" +
-            effectiveBranch +
+            encodedBranch +
             "/changelog.txt?_=" +
             Date.now();
 
@@ -5790,6 +5791,11 @@ function openVersionModal() {
   if (customBranchSection) customBranchSection.style.display = "none";
   const customBranchInput = document.getElementById("customBranchInput");
   if (customBranchInput) customBranchInput.value = "";
+  _customBranchCheckSequence += 1;
+  if (_customBranchCheckTimer) {
+    clearTimeout(_customBranchCheckTimer);
+    _customBranchCheckTimer = null;
+  }
   const changelogToggleSection = document.getElementById("changelogToggleSection");
   if (changelogToggleSection) changelogToggleSection.style.display = "none";
   const changelogSection = document.getElementById("changelogSection");
@@ -6431,37 +6437,32 @@ async function checkForUpdates() {
       const latest = await fetchLatestVersionFromChangelog("main");
       const currentIsDev = current.endsWith("-dev");
       const cmp = compareVersions(latest, current);
+      runUpdateBtn.dataset.channel = "main_direct";
+      runUpdateBtn.dataset.ref = "main";
+      runUpdateBtn.dataset.latest = latest;
 
       if (cmp > 0) {
         comparisonEl.textContent = `Update available: v${current} \u2192 ${latest}`;
         runUpdateBtn.textContent = "Update now";
         runUpdateBtn.classList.remove("update-btn--warn");
         runUpdateBtn.style.display = "inline-block";
-        runUpdateBtn.dataset.channel = "main_direct";
-        runUpdateBtn.dataset.ref = "main";
-        runUpdateBtn.dataset.latest = latest;
         if (downgradeWarn) downgradeWarn.style.display = "none";
       } else if (cmp === 0 && currentIsDev) {
         comparisonEl.textContent = `${latest} \u2014 switching from dev to stable build.`;
         runUpdateBtn.textContent = "Switch to Stable";
         runUpdateBtn.classList.remove("update-btn--warn");
         runUpdateBtn.style.display = "inline-block";
-        runUpdateBtn.dataset.channel = "main_direct";
-        runUpdateBtn.dataset.ref = "main";
-        runUpdateBtn.dataset.latest = latest;
         if (downgradeWarn) downgradeWarn.style.display = "none";
-      } else if (cmp < 0 && currentIsDev) {
-        // Dev build is ahead of latest stable — still allow switching to stable
-        comparisonEl.textContent = `Your dev build (v${current}) is ahead of the latest stable (${latest}). You can still switch to stable.`;
-        runUpdateBtn.textContent = "Switch to Stable";
-        runUpdateBtn.classList.remove("update-btn--warn");
+      } else if (cmp < 0) {
+        comparisonEl.textContent = currentIsDev
+          ? `Your dev build (v${current}) is ahead of the latest stable (${latest}). You can still switch to stable.`
+          : `The latest stable (${latest}) is older than your current install (v${current}).`;
+        runUpdateBtn.textContent = currentIsDev ? "Switch to Stable" : "Install anyway";
+        runUpdateBtn.classList.add("update-btn--warn");
         runUpdateBtn.style.display = "inline-block";
-        runUpdateBtn.dataset.channel = "main_direct";
-        runUpdateBtn.dataset.ref = "main";
-        runUpdateBtn.dataset.latest = latest;
-        if (downgradeWarn) downgradeWarn.style.display = "none";
+        if (downgradeWarn) downgradeWarn.style.display = "block";
       } else {
-        // cmp === 0 && !currentIsDev  OR  cmp < 0 && !currentIsDev
+        // cmp === 0 and the current install is already stable
         comparisonEl.textContent = `You are on the latest stable release (v${latest}).`;
         runUpdateBtn.style.display = "none";
         if (downgradeWarn) downgradeWarn.style.display = "none";
@@ -6472,33 +6473,32 @@ async function checkForUpdates() {
       const latest = await fetchLatestVersionFromChangelog("dev");
       const currentIsDev = current.endsWith("-dev");
       const cmp = compareVersions(latest, current);
+      runUpdateBtn.dataset.channel = "dev";
+      runUpdateBtn.dataset.ref = "dev";
+      runUpdateBtn.dataset.latest = latest;
 
       if (cmp > 0) {
         comparisonEl.textContent = `A newer version is available on dev (${latest} > ${current}).`;
         runUpdateBtn.textContent = "Update now";
         runUpdateBtn.classList.remove("update-btn--warn");
         runUpdateBtn.style.display = "inline-block";
-        runUpdateBtn.dataset.channel = "dev";
-        runUpdateBtn.dataset.ref = "dev";
-        runUpdateBtn.dataset.latest = latest;
         if (downgradeWarn) downgradeWarn.style.display = "none";
       } else if (cmp === 0 && !currentIsDev) {
         comparisonEl.textContent = `${latest} \u2014 switching from stable to dev build.`;
         runUpdateBtn.textContent = "Switch to Dev";
         runUpdateBtn.classList.remove("update-btn--warn");
         runUpdateBtn.style.display = "inline-block";
-        runUpdateBtn.dataset.channel = "dev";
-        runUpdateBtn.dataset.ref = "dev";
-        runUpdateBtn.dataset.latest = latest;
         if (downgradeWarn) downgradeWarn.style.display = "none";
       } else if (cmp === 0) {
         comparisonEl.textContent = `You are already on the latest dev version (${current}).`;
         runUpdateBtn.style.display = "none";
         if (downgradeWarn) downgradeWarn.style.display = "none";
       } else {
-        comparisonEl.textContent = `Local UI (${current}) is newer than dev channel (${latest}).`;
-        runUpdateBtn.style.display = "none";
-        if (downgradeWarn) downgradeWarn.style.display = "none";
+        comparisonEl.textContent = `Your installed build (v${current}) is ahead of the dev channel (${latest}). You can still switch to dev.`;
+        runUpdateBtn.textContent = "Install anyway";
+        runUpdateBtn.classList.add("update-btn--warn");
+        runUpdateBtn.style.display = "inline-block";
+        if (downgradeWarn) downgradeWarn.style.display = "block";
       }
       detailsSection.style.display = "block";
       if (changelogToggleSection) changelogToggleSection.style.display = "block";
@@ -6523,6 +6523,8 @@ async function checkForUpdates() {
 
 let _releasesData = [];
 const _changelogCache = new Map();
+let _customBranchCheckTimer = null;
+let _customBranchCheckSequence = 0;
 
 async function fetchReleasesFromAPI() {
   const url = "https://api.github.com/repos/r80xcore/mervlan/releases?per_page=5";
@@ -6601,10 +6603,17 @@ function updateReleaseComparison(tagName, current, runUpdateBtn, comparisonEl, d
     if (downgradeWarn) downgradeWarn.style.display = "none";
     if (runUpdateBtn) runUpdateBtn.style.display = "none";
   } else {
-    if (comparisonEl) comparisonEl.textContent = `${tagName} is older than your current install (v${current}).`;
+    if (comparisonEl) {
+      const stableTarget = _releasesData.length && _releasesData[0].tag === tagName
+        ? "latest stable"
+        : "selected stable release";
+      comparisonEl.textContent = currentIsDev
+        ? `Your dev build (v${current}) is ahead of the ${stableTarget} (${ver}). You can still switch to stable.`
+        : `${tagName} is older than your current install (v${current}).`;
+    }
     if (downgradeWarn) downgradeWarn.style.display = "block";
     if (runUpdateBtn) {
-      runUpdateBtn.textContent = "Install anyway";
+      runUpdateBtn.textContent = currentIsDev ? "Switch to Stable" : "Install anyway";
       runUpdateBtn.classList.add("update-btn--warn");
       runUpdateBtn.style.display = "inline-block";
       runUpdateBtn.dataset.channel = "main";
@@ -6642,11 +6651,22 @@ function onReleaseSelectChange() {
 function onCustomBranchInput() {
   const input = document.getElementById("customBranchInput");
   const runUpdateBtn = document.getElementById("runUpdateBtn");
+  const comparisonEl = document.getElementById("updateComparisonText");
+  const downgradeWarn = document.getElementById("downgradeWarning");
   if (!input || !runUpdateBtn) return;
   const branch = input.value.trim();
   const valid = branch.length > 0 &&
     /^[a-zA-Z0-9][a-zA-Z0-9._\-\/]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/.test(branch) &&
     branch.indexOf("//") === -1 && branch.indexOf("..") === -1 && !branch.endsWith(".lock");
+
+  _customBranchCheckSequence += 1;
+  const checkSequence = _customBranchCheckSequence;
+  if (_customBranchCheckTimer) {
+    clearTimeout(_customBranchCheckTimer);
+    _customBranchCheckTimer = null;
+  }
+  if (downgradeWarn) downgradeWarn.style.display = "none";
+
   if (valid) {
     runUpdateBtn.textContent = "Install branch";
     runUpdateBtn.classList.add("update-btn--warn");
@@ -6654,8 +6674,30 @@ function onCustomBranchInput() {
     runUpdateBtn.dataset.channel = "custom";
     runUpdateBtn.dataset.ref = "refs/heads/" + branch;
     runUpdateBtn.dataset.latest = branch;
+    if (comparisonEl) comparisonEl.textContent = "Checking branch version\u2026";
+
+    _customBranchCheckTimer = setTimeout(async () => {
+      try {
+        const targetVersion = await fetchLatestVersionFromChangelog(branch);
+        if (checkSequence !== _customBranchCheckSequence || input.value.trim() !== branch) return;
+        const current = getIndexHtmlVersion() || "0.0";
+        const cmp = compareVersions(targetVersion, current);
+        if (cmp < 0) {
+          if (comparisonEl) comparisonEl.textContent = `Custom branch ${branch} (${targetVersion}) is older than your current install (v${current}).`;
+          if (downgradeWarn) downgradeWarn.style.display = "block";
+        } else if (cmp > 0) {
+          if (comparisonEl) comparisonEl.textContent = `Custom branch ${branch} will update v${current} \u2192 ${targetVersion}.`;
+        } else if (comparisonEl) {
+          comparisonEl.textContent = `Custom branch ${branch} reports version ${targetVersion}.`;
+        }
+      } catch (_) {
+        if (checkSequence !== _customBranchCheckSequence || input.value.trim() !== branch) return;
+        if (comparisonEl) comparisonEl.textContent = `Custom branch ${branch} is ready to install. Its version could not be compared.`;
+      }
+    }, 400);
   } else {
     runUpdateBtn.style.display = "none";
+    if (comparisonEl) comparisonEl.textContent = branch ? "Enter a valid custom branch name." : "Enter a branch name, then click Install branch.";
   }
 }
 
@@ -6685,6 +6727,11 @@ function onChannelSelectChange() {
   if (customBranchSection) customBranchSection.style.display = "none";
   const customBranchInput = document.getElementById("customBranchInput");
   if (customBranchInput) customBranchInput.value = "";
+  _customBranchCheckSequence += 1;
+  if (_customBranchCheckTimer) {
+    clearTimeout(_customBranchCheckTimer);
+    _customBranchCheckTimer = null;
+  }
   hideChangelogDisplay();
   const toggleBtn = document.getElementById("toggleChangelogBtn");
   if (toggleBtn) toggleBtn.textContent = "Show Changelog";
@@ -6706,13 +6753,13 @@ function updateChannelCapabilityHint(channel) {
       hint.innerHTML = "Select from recent releases. Supports upgrade and downgrade.<br>Uses GitHub API \u2014 subject to rate limits.";
       break;
     case "main_direct":
-      hint.innerHTML = "Updates to the latest release only. No version selection.<br>No API \u2014 never rate limited.";
+      hint.innerHTML = "Updates to the latest stable branch head, including an older target with a downgrade warning.<br>No API \u2014 never rate limited.";
       break;
     case "dev":
-      hint.innerHTML = "Installs from the dev branch. May be unstable.<br>No API \u2014 never rate limited.";
+      hint.innerHTML = "Installs the dev branch head, including an older target with a downgrade warning. May be unstable.<br>No API \u2014 never rate limited.";
       break;
     case "custom":
-      hint.innerHTML = "Installs an explicitly named GitHub branch.<br>Development use only.";
+      hint.innerHTML = "Installs an explicitly named GitHub branch and compares its published version when available.<br>Development use only.";
       break;
     default:
       hint.textContent = "";

@@ -20,6 +20,11 @@ Fixed: GUI custom-branch and tagged-release updates not starting
   switching to older main/dev/tag targets that predate the library still works.
 - Stable latest, dev, custom branch, and tagged-release codeload archives are all
   validated through the same updater target-resolution flow.
+- Update comparisons now allow installing an older dev or latest-stable branch
+  head, preserve the dev-to-stable explanation for older releases, and show the
+  same downgrade warning on every channel whenever the target version is known
+  to be older than the installed build. Custom branches participate when their
+  changelog publishes a comparable version.
 
 Documentation:
 - Updated README.md and docs/HELP.md to mirror the current addon UI and behavior,

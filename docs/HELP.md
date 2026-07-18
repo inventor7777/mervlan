@@ -636,9 +636,9 @@ The recommended method is through the web UI. Click the version button in the bo
 | UI channel | Source and behavior |
 | --- | --- |
 | **Stable (releases)** | Loads recent GitHub release metadata and provides a tagged-version picker. Supports upgrades and downgrades. The selected tag archive is installed; GitHub release assets are not used. This option uses the GitHub API and can be affected by unauthenticated rate limits. |
-| **Stable (latest only)** | Installs the latest version directly from `main`, without the GitHub API or a version picker. Use it for the normal stable update path or to switch a development build back to stable. |
-| **Development (dev)** | Installs directly from `dev` without the GitHub API. It may contain unfinished or less-tested changes and can switch a stable installation to the corresponding development build. |
-| **Custom branch (dev only)** | Displays a branch field immediately and installs an explicitly named branch such as `dev-test1`. It does not use release selection or normal version comparison and should only be used for requested development testing. |
+| **Stable (latest only)** | Installs the latest version directly from `main`, without the GitHub API or a version picker. Use it for the normal stable update path or to switch a development build back to stable, even when stable is older than the installed development build. |
+| **Development (dev)** | Installs directly from `dev` without the GitHub API. It may contain unfinished or less-tested changes. The current dev branch head remains installable when it is older than a custom or local build. |
+| **Custom branch (dev only)** | Displays a branch field immediately and installs an explicitly named branch such as `dev-test1`. When its changelog publishes a version, the UI compares it with the installed build before installation. Use custom branches only for requested development testing. |
 
 Tagged releases are created from tested `main` commits. Stable release selection uses the GitHub API for metadata, then downloads the selected tag archive. Latest stable, development, and custom updates download their respective branch archives from GitHub.
 
@@ -656,7 +656,7 @@ Temporary test branches, normally named using the `dev-test<number>` format, may
 5. Click the displayed update or install button and leave the operation running until completion.
 6. Refresh the web UI when prompted so the newly installed files are loaded.
 
-Stable release selection supports installing an older tagged release and displays a downgrade warning before continuing. Stable latest and Development do not provide arbitrary older-version selection. Use a tagged release, the manual updater, or a local restore point when intentionally reverting. Attempting to close the modal while an update is active displays a confirmation warning; closing the UI does not safely cancel the backend operation.
+Every channel displays the same downgrade warning when its known target version is older than the installed version. Stable releases allow arbitrary tagged-version selection; Stable latest and Development allow installing their current branch head even when it is older, but do not provide an older-version picker. Custom branches are compared when their changelog exposes a version. Use a tagged release, an explicit ref, or a local restore point when reverting to a specific older build. Attempting to close the modal while an update is active displays a confirmation warning; closing the UI does not safely cancel the backend operation.
 
 ### Manual Update Commands
 

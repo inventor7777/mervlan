@@ -225,11 +225,11 @@ The recommended method is through the web UI. Click the version button in the bo
 | UI channel | What it does |
 | --- | --- |
 | **Stable (releases)** | Uses GitHub release metadata to show a tagged-version picker. Supports upgrades and downgrades, with a warning before installing an older release. The selected tag archive is installed; release assets are not used. |
-| **Stable (latest only)** | Installs the latest `main` version without the GitHub API or a version picker. Use this for normal stable updates or to switch a development build back to stable. |
-| **Development (dev)** | Installs directly from `dev` without the GitHub API. May contain unfinished or less-tested changes. |
-| **Custom branch (dev only)** | Installs an explicitly named branch such as `dev-test1`. Intended only for requested development testing. |
+| **Stable (latest only)** | Installs the latest `main` version without the GitHub API or a version picker. It can switch a newer development build back to the current stable branch head. |
+| **Development (dev)** | Installs directly from `dev` without the GitHub API. The current dev branch head remains installable when older than a custom build. May contain unfinished or less-tested changes. |
+| **Custom branch (dev only)** | Installs an explicitly named branch such as `dev-test1` and compares its published changelog version when available. Intended only for requested development testing. |
 
-For Stable releases, click <kbd>Check for updates</kbd> and select a tagged version. For a custom branch, selecting the channel immediately displays the branch field. Review the upgrade, switch, or downgrade message, start the installation, leave it running until completion, and refresh the UI when prompted.
+For Stable releases, click <kbd>Check for updates</kbd> and select a tagged version. For a custom branch, selecting the channel immediately displays the branch field. All channels show the same downgrade warning when the known target version is older than the installed build. Review the upgrade, switch, or downgrade message, start the installation, leave it running until completion, and refresh the UI when prompted.
 
 ### Manual Update Commands
 
