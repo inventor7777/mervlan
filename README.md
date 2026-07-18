@@ -216,11 +216,11 @@ From `/jffs/addons/mervlan` on the AP:
 <h2 id="update">Update <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 > [!NOTE]
-> Updates preserve your settings, SSH keys, MAC Shield databases, and local backups whenever possible. After updating, MerVLAN refreshes the public web UI files and reapplies the required service hooks. Refresh your browser after the update to load the latest web interface.
+> Updates preserve your settings, SSH keys, MAC Shield databases, local backups, and existing logs whenever possible. The Update tab can instead clear existing logs immediately after obtaining the maintenance lock; the complete new update is still logged. After updating, MerVLAN comprehensively reprovisions the public/runtime installation and reapplies the required service hooks. Refresh your browser after the update to load the latest web interface.
 
 MerVLAN can be updated in place without losing its existing configuration or SSH keys.
 
-The recommended method is through the web UI. Click the version button in the bottom-right corner and select a channel:
+The recommended method is through the web UI. Click the version button in the bottom-right corner. The modal opens on the **Update** tab and also provides a **Restore** tab for local backup management.
 
 | UI channel | What it does |
 | --- | --- |
@@ -229,7 +229,9 @@ The recommended method is through the web UI. Click the version button in the bo
 | **Development (dev)** | Installs directly from `dev` without the GitHub API. The current dev branch head remains installable when older than a custom build. May contain unfinished or less-tested changes. |
 | **Custom branch (dev only)** | Installs an explicitly named branch such as `dev-test1` and compares its published changelog version when available. Intended only for requested development testing. |
 
-For Stable releases, click <kbd>Check for updates</kbd> and select a tagged version. For a custom branch, selecting the channel immediately displays the branch field. All channels show the same downgrade warning when the known target version is older than the installed build. Review the upgrade, switch, or downgrade message, start the installation, leave it running until completion, and refresh the UI when prompted.
+For Stable releases, click <kbd>Check for updates</kbd> and select a tagged version. For a custom branch, selecting the channel immediately displays the branch field. All channels show the same downgrade warning when the known target version is older than the installed build. Leave **Clear existing logs before update** unchecked to retain history within the configured limits, or select it to start this update with empty logs. Review the upgrade, switch, or downgrade message, start the installation, leave it running until completion, and refresh the UI when prompted.
+
+The Restore tab lists every available automatic and manual backup. It can create up to three tagged manual backups in addition to the three automatically rotated update backups, restore either type, delete an individual backup, or permanently delete all contents of `/jffs/addons/mervlan_backups`. Persistent JFFS backup usage/availability and temporary `/tmp` undo usage/availability are always shown. Restore validates and stages the selected archive before replacing the active tree, retains the original installation for transactional rollback, refreshes the public UI and hooks, and rebuilds the configured multi-device system from the backup. Reachable nodes are cleaned and synchronized, receive the restored shared MAC Shield data, and return to the backed-up enabled or disabled boot state. After success, the displaced installation becomes one temporary **Undo Restore** file instead of consuming an automatic slot. A successful update exposes **Undo Update** through a reboot-volatile marker to its existing automatic pre-update backup; the underlying automatic archive remains normally restorable after the shortcut expires.
 
 ### Manual Update Commands
 
@@ -237,7 +239,16 @@ For Stable releases, click <kbd>Check for updates</kbd> and select a tagged vers
 | --- | --- |
 | `sh functions/update_mervlan.sh` | Update to the latest version from the `main` public beta channel. |
 | `sh functions/update_mervlan.sh dev` | Update to the latest version from the `dev` development channel. |
-| `sh functions/update_mervlan.sh restore` | Open the restore menu and restore a previously created local MerVLAN backup. |
+| `sh functions/update_mervlan.sh update dev --logs=keep` | Explicitly preserve existing logs while updating from `dev` (the default policy). |
+| `sh functions/update_mervlan.sh update dev --logs=clear` | Clear existing logs inside the locked transaction, then retain the complete new update log. |
+| `sh functions/update_mervlan.sh backup` | Open the interactive manual-backup and deletion menu. |
+| `sh functions/update_mervlan.sh backup create TAG` | Create a tagged manual backup; tags use 1-24 letters, numbers, `_`, or `-`. |
+| `sh functions/update_mervlan.sh restore` | Open the interactive restore and backup-maintenance menu. |
+| `sh functions/update_mervlan.sh restore ARCHIVE yes` | Restore an exact automatic or manual archive without interactive selection. |
+| `sh functions/update_mervlan.sh undo restore yes` | Consume the temporary pre-restore file and undo the last successful restore. |
+| `sh functions/update_mervlan.sh undo update yes` | Follow the temporary marker to the automatic pre-update archive and undo the last successful update. |
+| `sh functions/update_mervlan.sh backup delete ARCHIVE yes` | Permanently delete one exact backup archive. |
+| `sh functions/update_mervlan.sh backup delete-all yes` | Permanently delete all backup-directory contents. |
 | `sh functions/update_mervlan.sh BRANCH` | Install an explicitly named custom development branch. |
 | `sh functions/update_mervlan.sh refs/tags/v0.53.15` | Install an explicit tagged release; replace the example with the required tag. |
 
@@ -249,8 +260,10 @@ The updater will:
 - Stage the new files and perform an atomic replacement.
 - Preserve `settings/settings.json`, SSH keys, MAC Shield databases, and local backups whenever possible.
 - Re-run the hardware probe.
-- Refresh the public web UI files and reinstall the required service hooks.
-- Synchronize configured remote nodes when SSH is enabled and the nodes are reachable.
+- Stop active main/node runtime work and remove old-version template injections before swapping files.
+- Reprovision the complete public/runtime installation, including menu registration, settings/log/result symlinks, SSH-key publication, permissions, and missing log creation, without truncating retained logs.
+- Synchronize configured remote nodes, reinstall their target-version baseline templates, and explicitly apply the current `BOOT_ENABLED` state when SSH is enabled and the nodes are reachable.
+- Verify main and node runtime reports after reconciliation; the main unit retries and rolls back on a persistent mismatch, while named node failures are reported as warnings.
 
 > [!TIP]
 > For channel details, custom branches, tagged downgrades, restore instructions, and additional update commands, see [Updating MerVLAN in the Help Guide](docs/HELP.md#updating-mervlan).
@@ -283,6 +296,8 @@ These same logs are exposed via the web UI using symlinks under:
 Log formatting, colors, and syslog tagging are configurable in:
 
 - `settings/log_settings.sh`
+
+The shared log helper limits each managed `*.log` file to the newest 2,000 lines and 1 MiB by default. The existing health cron performs a lightweight due check every run and carries out cron-triggered maintenance at most once every 24 hours. Manager runs and update, restore, or backup completion may invoke the same helper sooner when useful. Clearing logs truncates them in place so the public log links remain valid.
 
 ---
 

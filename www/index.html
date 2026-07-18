@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!-- index.html version="0.53.21-dev" -->
+  <!-- index.html version="0.53.22-dev" -->
   <meta charset="utf-8" />
   <title>MerVLAN Manager</title>
   <link rel="stylesheet" href="vlan_form_style.css" />
@@ -168,6 +168,137 @@
       color: #888;
       margin: 3px 0 0;
     }
+
+    .version-modal-tabs {
+      display: flex;
+      gap: 4px;
+      margin: 8px 0 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .version-modal-tab {
+      min-width: 105px;
+      border-bottom-left-radius: 0 !important;
+      border-bottom-right-radius: 0 !important;
+      opacity: 0.72;
+    }
+
+    .version-modal-tab.is-active {
+      opacity: 1;
+      color: #fff !important;
+      border-color: #6cbaf5 !important;
+      background: rgba(108, 186, 245, 0.2) !important;
+    }
+
+    .backup-inventory-list {
+      max-height: 210px;
+      overflow-y: auto;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      margin-top: 6px;
+    }
+
+    .backup-inventory-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 7px 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+    }
+
+    .backup-inventory-row:last-child { border-bottom: 0; }
+    .backup-inventory-row:hover { background: rgba(255, 255, 255, 0.04); }
+    .backup-inventory-row input { margin-top: 3px; }
+    .backup-inventory-main { flex: 1; min-width: 0; }
+    .backup-inventory-title { font-weight: 600; overflow-wrap: anywhere; }
+    .backup-inventory-meta { color: #999; font-size: 0.8rem; margin-top: 2px; }
+    .backup-type-badge { color: #9ccbf0; text-transform: capitalize; }
+    .backup-empty { color: #999; padding: 12px 8px; text-align: center; }
+    .backup-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .backup-storage-summary { margin: 7px 0; padding: 7px 8px; border-radius: 4px; background: rgba(0, 0, 0, 0.16); color: #aaa; font-size: 0.82rem; line-height: 1.45; }
+    .backup-undo-section { border-top: 1px solid rgba(108, 186, 245, 0.28); padding-top: 9px; }
+    .backup-undo-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 7px; }
+    .backup-undo-copy { flex: 1; min-width: 0; color: #999; font-size: 0.82rem; overflow-wrap: anywhere; }
+    .backup-undo-copy.is-available { color: #9ccbf0; }
+    .backup-manual-input { width: 100%; box-sizing: border-box; text-transform: none; }
+    .backup-tooltip-wrap { position: relative; display: inline-flex; }
+    .backup-action-tooltip {
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 8px);
+      z-index: 30;
+      width: min(330px, 70vw);
+      transform: translateX(-50%);
+      padding: 7px 9px;
+      border: 1px solid rgba(255, 138, 138, 0.5);
+      border-radius: 4px;
+      background: #20252b;
+      color: #f0f0f0;
+      font-size: 0.78rem;
+      line-height: 1.4;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.12s ease;
+    }
+    .backup-tooltip-wrap:hover .backup-action-tooltip,
+    .backup-tooltip-wrap:focus-within .backup-action-tooltip { opacity: 1; visibility: visible; }
+    .maintenance-status { min-height: 1.4em; margin: 5px 0; font-size: 0.88rem; }
+    .maintenance-status.is-success { color: #7bd77b; }
+    .maintenance-status.is-warning { color: #ffaa6b; }
+    .maintenance-status.is-error { color: #ff8a8a; }
+
+    #versionModal {
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+    }
+
+    .maintenance-confirm-overlay {
+      position: fixed;
+      inset: auto;
+      z-index: 1200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      box-sizing: border-box;
+      border-radius: 0 6px 6px 6px;
+      background: rgba(18, 30, 36, 0.9);
+    }
+
+    .maintenance-confirm-overlay.is-visible { display: flex; }
+
+    .maintenance-confirm-card {
+      width: min(360px, 100%);
+      box-sizing: border-box;
+      padding: 18px;
+      border: 1px solid #569ac7;
+      border-radius: 5px;
+      background: #2f3a3e;
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+    }
+
+    .maintenance-confirm-title {
+      margin: 0 0 10px;
+      color: #fff;
+      font-size: 16px;
+    }
+
+    .maintenance-confirm-message {
+      margin: 0 0 14px;
+      color: #ddd;
+      line-height: 1.5;
+      white-space: pre-line;
+      overflow-wrap: anywhere;
+    }
+
+    .maintenance-confirm-input-wrap { margin-bottom: 14px; }
+    .maintenance-confirm-input-wrap label { display: block; margin-bottom: 5px; color: #ffb36b; }
+    .maintenance-confirm-input { width: 100%; box-sizing: border-box; text-transform: none; }
+    .maintenance-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
     #unsupportedModelModal .modal__actions {
       justify-content: center;
@@ -488,10 +619,17 @@
 
       <!-- Exit-during-update confirmation bar -->
       <div id="updateExitWarning" class="update-exit-warning" style="display:none;">
-        <span>Update is in progress. Really exit?</span>
+        <span>A maintenance operation is in progress. Really exit?</span>
         <button type="button" class="button_gen" onclick="dismissUpdateExitWarning()">Stay</button>
         <button type="button" class="button_gen update-btn--warn" onclick="forceCloseVersionModal()">Exit anyway</button>
       </div>
+
+      <div class="version-modal-tabs" role="tablist" aria-label="Version maintenance">
+        <button type="button" id="versionUpdateTab" class="button_gen version-modal-tab is-active" role="tab" aria-selected="true" onclick="selectVersionModalTab('update')">Update</button>
+        <button type="button" id="versionRestoreTab" class="button_gen version-modal-tab" role="tab" aria-selected="false" onclick="selectVersionModalTab('restore')">Restore</button>
+      </div>
+
+      <div id="versionUpdatePanel" role="tabpanel">
 
       <div class="modal__section">
         <label for="versionChannelSelect"><strong>Channel:</strong></label>
@@ -502,6 +640,14 @@
           <option value="custom">Custom branch (dev only)</option>
         </select>
         <p id="channelCapabilityHint" class="channel-capability-hint"></p>
+      </div>
+
+      <div class="modal__section">
+        <label class="backup-checkbox-label" for="clearLogsBeforeUpdate">
+          <input type="checkbox" id="clearLogsBeforeUpdate">
+          <strong>Clear existing logs before update</strong>
+        </label>
+        <p class="channel-capability-hint">When unchecked, existing history is retained subject to the configured log limits. Clearing occurs inside the locked update transaction, so the complete new update remains logged.</p>
       </div>
 
       <div class="modal__section">
@@ -553,9 +699,59 @@
           Update complete &#x2014; please refresh your browser to load the new version.
         </div>
       </div>
+      </div>
+
+      <div id="versionRestorePanel" role="tabpanel" style="display:none;">
+        <div class="modal__section">
+          <div class="backup-actions">
+            <button type="button" class="button_gen" id="refreshBackupsBtn" onclick="refreshBackupInventory(this)">Check Backups</button>
+            <span id="backupCountText" class="muted">Automatic: 0/3 &nbsp; Manual: 0/3</span>
+          </div>
+          <div class="backup-storage-summary" aria-live="polite">
+            <div id="persistentBackupStorageText">Persistent backup storage (JFFS): checking used and available space…</div>
+            <div id="temporaryBackupStorageText">Temporary undo storage (/tmp): checking used and available space…</div>
+          </div>
+          <div id="backupInventoryList" class="backup-inventory-list">
+            <div class="backup-empty">Select Check Backups to load restore points.</div>
+          </div>
+          <div class="backup-actions">
+            <button type="button" class="button_gen" id="restoreSelectedBtn" onclick="restoreSelectedBackup()" disabled>Restore Selected</button>
+            <button type="button" class="button_gen update-btn--warn" id="deleteSelectedBackupBtn" onclick="deleteSelectedBackup()" disabled>Delete Selected</button>
+            <span class="backup-tooltip-wrap">
+              <button type="button" class="button_gen update-btn--warn" id="deleteAllBackupsBtn" onclick="deleteAllBackups()" aria-describedby="deleteAllBackupsTooltip">Delete All Backups</button>
+              <span class="backup-action-tooltip" id="deleteAllBackupsTooltip" role="tooltip">Permanently deletes every persistent automatic and manual backup. Undo Update is cleared when its referenced archive is removed; temporary Undo Restore is retained. This cannot be undone.</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="modal__section">
+          <label for="manualBackupTag"><strong>Create Manual Backup:</strong></label>
+          <input type="text" id="manualBackupTag" class="input_option backup-manual-input" maxlength="24" placeholder="e.g. before-vlan-test" oninput="validateManualBackupTag()">
+          <p class="channel-capability-hint">1-24 letters, numbers, underscores, or hyphens. Manual backups are limited to three.</p>
+          <div class="backup-actions">
+            <button type="button" class="button_gen" id="createManualBackupBtn" onclick="createManualBackup()" disabled>Create Backup</button>
+          </div>
+        </div>
+
+        <div class="modal__section backup-undo-section">
+          <strong>Temporary Undo</strong>
+          <p class="channel-capability-hint">Temporary undo state is stored in /tmp and expires when the router reboots or temporary storage is cleared.</p>
+          <div class="backup-undo-row">
+            <span id="undoRestoreStatus" class="backup-undo-copy">No Undo Restore file detected.</span>
+            <button type="button" class="button_gen" id="undoRestoreBtn" onclick="undoLastRestore()" disabled>Undo Restore</button>
+          </div>
+          <div class="backup-undo-row">
+            <span id="undoUpdateStatus" class="backup-undo-copy">No Undo Update shortcut detected.</span>
+            <button type="button" class="button_gen" id="undoUpdateBtn" onclick="undoLastUpdate()" disabled>Undo Update</button>
+          </div>
+        </div>
+
+        <div id="maintenanceStatus" class="maintenance-status" aria-live="polite"></div>
+        <button type="button" class="button_gen" id="maintenanceRefreshBtn" onclick="window.location.reload()" style="display:none;">Refresh UI</button>
+      </div>
     </div>
 
-    <div class="modal__actions">
+    <div class="modal__actions" id="updateModalActions">
       <button
         type="button"
         class="button_gen"
@@ -574,6 +770,22 @@
       >
         Refresh Now
       </button>
+    </div>
+
+  </div>
+
+  <div id="maintenanceConfirmOverlay" class="maintenance-confirm-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="maintenanceConfirmTitle" aria-describedby="maintenanceConfirmMessage" onkeydown="handleMaintenanceConfirmationKey(event)">
+    <div class="maintenance-confirm-card">
+      <h4 id="maintenanceConfirmTitle" class="maintenance-confirm-title">Confirm action</h4>
+      <p id="maintenanceConfirmMessage" class="maintenance-confirm-message"></p>
+      <div id="maintenanceConfirmInputWrap" class="maintenance-confirm-input-wrap" style="display:none;">
+        <label id="maintenanceConfirmInputLabel" for="maintenanceConfirmInput"></label>
+        <input type="text" id="maintenanceConfirmInput" class="input_option maintenance-confirm-input" autocomplete="off" oninput="validateMaintenanceConfirmationInput()">
+      </div>
+      <div class="maintenance-confirm-actions">
+        <button type="button" class="button_gen" id="maintenanceConfirmCancelBtn" onclick="settleMaintenanceConfirmation(false)">Cancel</button>
+        <button type="button" class="button_gen" id="maintenanceConfirmAcceptBtn" onclick="settleMaintenanceConfirmation(true)">Continue</button>
+      </div>
     </div>
   </div>
 
@@ -3407,7 +3619,10 @@ function showTooltip() {
           // service status JSON written by mervlan_boot.sh status (tmpfs, not persistent)
           SERVICE_STATUS: "tmp/results/service_status.json",
           // correlated completion result for verified backend actions
-          ACTION_RESULT: "tmp/results/action_result.json"
+          ACTION_RESULT: "tmp/results/action_result.json",
+          // backup inventory and correlated backup/restore operation result
+          BACKUP_INVENTORY: "tmp/results/backup_inventory.json",
+          MAINTENANCE_RESULT: "tmp/results/maintenance_result.json"
         };
 
     function isAtBottom(el){ return el.scrollTop + el.clientHeight >= el.scrollHeight - 10; }
@@ -3487,6 +3702,15 @@ function toggleCliFullsize() {
     let updateLogTimer = null;
     let lastUpdateLogLine = "";
     let _updateTimeoutId = null;
+    let maintenancePollTimer = null;
+    let maintenanceTimeoutTimer = null;
+    let maintenanceStartTimeoutTimer = null;
+    let maintenanceRequestSeen = false;
+    let maintenanceRequestToken = "";
+    let backupInventoryData = null;
+    let maintenanceConfirmationResolve = null;
+    let maintenanceConfirmationRequiredText = "";
+    let maintenanceConfirmationPreviousFocus = null;
 
     function setUpdateStatus(text, color) {
       const statusEl = document.getElementById("updateStatusText");
@@ -3564,7 +3788,13 @@ function toggleCliFullsize() {
           stopUpdateSpinner("Update completed", "#7bd77b");
           stopUpdateLogPolling();
           const completeMsg = document.getElementById("updateCompleteMessage");
-          if (completeMsg) completeMsg.style.display = "block";
+          if (completeMsg) {
+            const undoAvailable = lines.slice(-Math.min(20, lines.length)).some(line => /Undo Update is available until the router reboots/i.test(line));
+            completeMsg.textContent = undoAvailable
+              ? "Update complete — Undo Update is available from the Restore tab until reboot. Refresh your browser to load the new version."
+              : "Update complete — no temporary Undo Update shortcut is available. Refresh your browser to load the new version.";
+            completeMsg.style.display = "block";
+          }
           const refreshNowBtn = document.getElementById("refreshNowBtn");
           if (refreshNowBtn) refreshNowBtn.style.display = "inline-block";
         } else if (lines.slice(-Math.min(10, lines.length)).some(line => /Update failed in stage:|update.*fail/i.test(line))) {
@@ -5551,7 +5781,14 @@ function anchorModalToForm(modal) {
 
     let anchorOffset = 0;
     if (modal.id === 'versionModal') {
-      anchorOffset = 250;
+      const modalHeight = modal.offsetHeight || modal.getBoundingClientRect().height || 0;
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+      const formTop = scrollY + formRect.top;
+      const formBottom = scrollY + formRect.bottom;
+      const viewportBottom = viewportHeight ? scrollY + viewportHeight : formBottom;
+      const safeBottom = Math.min(formBottom, viewportBottom) - 16;
+      const maxOffset = modalHeight ? safeBottom - formTop - modalHeight : 200;
+      anchorOffset = Math.max(12, Math.min(200, maxOffset));
     } else if (modal.id === 'vlanManagerModal') {
       const modalHeight = modal.offsetHeight || 0;
       anchorOffset = Math.max(0, (formRect.height - modalHeight) / 2);
@@ -5574,6 +5811,23 @@ function releaseAnchoredModal(modal) {
   modal.style.position = '';
 }
 
+function positionMaintenanceConfirmationOverlay() {
+  const overlay = document.getElementById('maintenanceConfirmOverlay');
+  const form = document.querySelector('.form-box--main');
+  if (!overlay || !form) return;
+  const formRect = form.getBoundingClientRect();
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+  const left = Math.max(0, formRect.left);
+  const top = Math.max(0, formRect.top);
+  const right = viewportWidth ? Math.min(viewportWidth, formRect.right) : formRect.right;
+  const bottom = viewportHeight ? Math.min(viewportHeight, formRect.bottom) : formRect.bottom;
+  overlay.style.left = `${left}px`;
+  overlay.style.top = `${top}px`;
+  overlay.style.width = `${Math.max(0, right - left)}px`;
+  overlay.style.height = `${Math.max(0, bottom - top)}px`;
+}
+
 window.addEventListener('resize', () => {
   if (activeCenteredModal) {
     requestAnimationFrame(() => centerModalOverForm(activeCenteredModal));
@@ -5581,11 +5835,19 @@ window.addEventListener('resize', () => {
   if (anchoredModal) {
     anchorModalToForm(anchoredModal);
   }
+  const confirmationOverlay = document.getElementById('maintenanceConfirmOverlay');
+  if (confirmationOverlay && confirmationOverlay.classList.contains('is-visible')) {
+    positionMaintenanceConfirmationOverlay();
+  }
 });
 
 window.addEventListener('scroll', () => {
   if (activeCenteredModal) {
     requestAnimationFrame(() => centerModalOverForm(activeCenteredModal));
+  }
+  const confirmationOverlay = document.getElementById('maintenanceConfirmOverlay');
+  if (confirmationOverlay && confirmationOverlay.classList.contains('is-visible')) {
+    requestAnimationFrame(positionMaintenanceConfirmationOverlay);
   }
 }, { passive: true });
 
@@ -5750,11 +6012,474 @@ function closeVlanManagerModal() {
 }
 
 
+function makeMaintenanceRequestToken() {
+  return "mvm-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+}
+
+function validateMaintenanceConfirmationInput() {
+  const input = document.getElementById("maintenanceConfirmInput");
+  const accept = document.getElementById("maintenanceConfirmAcceptBtn");
+  if (!accept) return;
+  accept.disabled = !!maintenanceConfirmationRequiredText && (!input || input.value !== maintenanceConfirmationRequiredText);
+}
+
+function settleMaintenanceConfirmation(accepted) {
+  const overlay = document.getElementById("maintenanceConfirmOverlay");
+  const input = document.getElementById("maintenanceConfirmInput");
+  if (overlay) {
+    overlay.classList.remove("is-visible");
+    overlay.setAttribute("aria-hidden", "true");
+  }
+  if (input) input.value = "";
+  maintenanceConfirmationRequiredText = "";
+  const resolve = maintenanceConfirmationResolve;
+  maintenanceConfirmationResolve = null;
+  const previousFocus = maintenanceConfirmationPreviousFocus;
+  maintenanceConfirmationPreviousFocus = null;
+  if (previousFocus && typeof previousFocus.focus === "function") {
+    try { previousFocus.focus(); } catch (_) {}
+  }
+  if (resolve) resolve(!!accepted);
+}
+
+function handleMaintenanceConfirmationKey(event) {
+  if (!event) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    settleMaintenanceConfirmation(false);
+    return;
+  }
+  if (event.key === "Enter") {
+    const accept = document.getElementById("maintenanceConfirmAcceptBtn");
+    if (accept && !accept.disabled) {
+      event.preventDefault();
+      settleMaintenanceConfirmation(true);
+    }
+  }
+}
+
+function showMaintenanceConfirmation(options) {
+  options = options || {};
+  if (maintenanceConfirmationResolve) settleMaintenanceConfirmation(false);
+  const overlay = document.getElementById("maintenanceConfirmOverlay");
+  const title = document.getElementById("maintenanceConfirmTitle");
+  const message = document.getElementById("maintenanceConfirmMessage");
+  const inputWrap = document.getElementById("maintenanceConfirmInputWrap");
+  const inputLabel = document.getElementById("maintenanceConfirmInputLabel");
+  const input = document.getElementById("maintenanceConfirmInput");
+  const accept = document.getElementById("maintenanceConfirmAcceptBtn");
+  if (!overlay || !title || !message || !inputWrap || !inputLabel || !input || !accept) {
+    return Promise.resolve(false);
+  }
+  maintenanceConfirmationPreviousFocus = document.activeElement;
+  maintenanceConfirmationRequiredText = String(options.requiredText || "");
+  title.textContent = options.title || "Confirm action";
+  message.textContent = options.message || "Continue with this operation?";
+  accept.textContent = options.confirmLabel || "Continue";
+  accept.classList.toggle("update-btn--warn", !!options.danger);
+  input.value = "";
+  if (maintenanceConfirmationRequiredText) {
+    inputLabel.textContent = "Type " + maintenanceConfirmationRequiredText + " to continue:";
+    inputWrap.style.display = "block";
+  } else {
+    inputLabel.textContent = "";
+    inputWrap.style.display = "none";
+  }
+  validateMaintenanceConfirmationInput();
+  positionMaintenanceConfirmationOverlay();
+  overlay.classList.add("is-visible");
+  overlay.setAttribute("aria-hidden", "false");
+  return new Promise(resolve => {
+    maintenanceConfirmationResolve = resolve;
+    requestAnimationFrame(() => {
+      const focusTarget = maintenanceConfirmationRequiredText ? input : accept;
+      try { focusTarget.focus(); } catch (_) {}
+    });
+  });
+}
+
+function setMaintenanceStatus(message, state) {
+  const el = document.getElementById("maintenanceStatus");
+  if (!el) return;
+  el.textContent = message || "";
+  el.classList.remove("is-success", "is-warning", "is-error");
+  if (state) el.classList.add("is-" + state);
+}
+
+function stopMaintenancePolling() {
+  if (maintenancePollTimer) {
+    clearInterval(maintenancePollTimer);
+    maintenancePollTimer = null;
+  }
+  if (maintenanceTimeoutTimer) {
+    clearTimeout(maintenanceTimeoutTimer);
+    maintenanceTimeoutTimer = null;
+  }
+  if (maintenanceStartTimeoutTimer) {
+    clearTimeout(maintenanceStartTimeoutTimer);
+    maintenanceStartTimeoutTimer = null;
+  }
+}
+
+function setMaintenanceBusy(busy) {
+  isUpdateInProgress = !!busy;
+  ["versionUpdateTab", "versionRestoreTab", "refreshBackupsBtn", "restoreSelectedBtn",
+   "deleteSelectedBackupBtn", "createManualBackupBtn", "deleteAllBackupsBtn", "manualBackupTag",
+   "undoRestoreBtn", "undoUpdateBtn", "clearLogsBeforeUpdate"]
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (busy) {
+        el.dataset.maintenanceDisabled = el.disabled ? "1" : "0";
+        el.disabled = true;
+      } else if (el.dataset.maintenanceDisabled === "0") {
+        el.disabled = false;
+        delete el.dataset.maintenanceDisabled;
+      } else {
+        delete el.dataset.maintenanceDisabled;
+      }
+    });
+  if (!busy) {
+    updateBackupActionState();
+    validateManualBackupTag();
+  }
+}
+
+function selectVersionModalTab(tab) {
+  if (isUpdateInProgress) return;
+  const restore = tab === "restore";
+  const updatePanel = document.getElementById("versionUpdatePanel");
+  const restorePanel = document.getElementById("versionRestorePanel");
+  const updateTab = document.getElementById("versionUpdateTab");
+  const restoreTab = document.getElementById("versionRestoreTab");
+  const actions = document.getElementById("updateModalActions");
+  if (updatePanel) updatePanel.style.display = restore ? "none" : "block";
+  if (restorePanel) restorePanel.style.display = restore ? "block" : "none";
+  if (actions) actions.style.display = restore ? "none" : "flex";
+  if (updateTab) {
+    updateTab.classList.toggle("is-active", !restore);
+    updateTab.setAttribute("aria-selected", restore ? "false" : "true");
+  }
+  if (restoreTab) {
+    restoreTab.classList.toggle("is-active", restore);
+    restoreTab.setAttribute("aria-selected", restore ? "true" : "false");
+  }
+  const versionModal = document.getElementById("versionModal");
+  if (versionModal && versionModal.style.display !== "none") {
+    anchorModalToForm(versionModal);
+  }
+  if (restore && !backupInventoryData) refreshBackupInventory(document.getElementById("refreshBackupsBtn"));
+}
+
+function formatBackupSize(bytes) {
+  const n = Number(bytes) || 0;
+  if (n >= 1048576) return (n / 1048576).toFixed(1) + " MB";
+  if (n >= 1024) return Math.round(n / 1024) + " KB";
+  return n + " B";
+}
+
+function selectedBackupId() {
+  const selected = document.querySelector('input[name="backupSelection"]:checked');
+  return selected ? selected.value : "";
+}
+
+function updateBackupActionState() {
+  const selected = !!selectedBackupId();
+  const restoreBtn = document.getElementById("restoreSelectedBtn");
+  const deleteBtn = document.getElementById("deleteSelectedBackupBtn");
+  if (restoreBtn && !isUpdateInProgress) restoreBtn.disabled = !selected;
+  if (deleteBtn && !isUpdateInProgress) deleteBtn.disabled = !selected;
+  const undo = backupInventoryData && backupInventoryData.undo ? backupInventoryData.undo : {};
+  const undoRestoreBtn = document.getElementById("undoRestoreBtn");
+  const undoUpdateBtn = document.getElementById("undoUpdateBtn");
+  if (undoRestoreBtn && !isUpdateInProgress) undoRestoreBtn.disabled = !(undo.restore && undo.restore.available === true);
+  if (undoUpdateBtn && !isUpdateInProgress) undoUpdateBtn.disabled = !(undo.update && undo.update.available === true);
+}
+
+function renderBackupInventory(data) {
+  backupInventoryData = data && typeof data === "object" ? data : { backups: [] };
+  const list = document.getElementById("backupInventoryList");
+  const count = document.getElementById("backupCountText");
+  if (count) {
+    count.textContent = "Automatic: " + (backupInventoryData.automatic_count || 0) + "/" + (backupInventoryData.automatic_limit || 3) +
+      "   Manual: " + (backupInventoryData.manual_count || 0) + "/" + (backupInventoryData.manual_limit || 3);
+  }
+  const storage = backupInventoryData.storage || {};
+  const persistent = storage.persistent || {};
+  const temporary = storage.temporary || {};
+  const persistentText = document.getElementById("persistentBackupStorageText");
+  const temporaryText = document.getElementById("temporaryBackupStorageText");
+  if (persistentText) {
+    persistentText.textContent = "Persistent backup storage (JFFS): " + formatBackupSize(persistent.used_bytes) +
+      " used / " + formatBackupSize(persistent.available_bytes) + " available";
+  }
+  if (temporaryText) {
+    temporaryText.textContent = "Temporary undo storage (/tmp): " + formatBackupSize(temporary.used_bytes) +
+      " used / " + formatBackupSize(temporary.available_bytes) + " available";
+  }
+  const undo = backupInventoryData.undo || {};
+  const undoRestore = undo.restore || {};
+  const undoUpdate = undo.update || {};
+  const undoRestoreStatus = document.getElementById("undoRestoreStatus");
+  const undoUpdateStatus = document.getElementById("undoUpdateStatus");
+  if (undoRestoreStatus) {
+    undoRestoreStatus.classList.toggle("is-available", undoRestore.available === true);
+    undoRestoreStatus.textContent = undoRestore.available === true
+      ? "Undo Restore file detected — " + String(undoRestore.version || "unknown") + ", " +
+        String(undoRestore.created || "unknown") + ", " + formatBackupSize(undoRestore.size_bytes) + ". Lost on reboot."
+      : "No Undo Restore file detected.";
+  }
+  if (undoUpdateStatus) {
+    undoUpdateStatus.classList.toggle("is-available", undoUpdate.available === true);
+    undoUpdateStatus.textContent = undoUpdate.available === true
+      ? "Undo Update shortcut detected — restores " + String(undoUpdate.version || "unknown") +
+        " from " + String(undoUpdate.backup_id || "automatic backup") + ". Expires on reboot."
+      : "No Undo Update shortcut detected.";
+  }
+  if (!list) return;
+  list.textContent = "";
+  const backups = Array.isArray(backupInventoryData.backups) ? backupInventoryData.backups.slice() : [];
+  backups.sort((a, b) => String(b.timestamp || "").localeCompare(String(a.timestamp || "")));
+  if (!backups.length) {
+    const empty = document.createElement("div");
+    empty.className = "backup-empty";
+    empty.textContent = "No backups are available.";
+    list.appendChild(empty);
+  } else {
+    backups.forEach((backup, index) => {
+      const row = document.createElement("label");
+      row.className = "backup-inventory-row";
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "backupSelection";
+      radio.value = String(backup.id || "");
+      radio.addEventListener("change", updateBackupActionState);
+      const main = document.createElement("div");
+      main.className = "backup-inventory-main";
+      const title = document.createElement("div");
+      title.className = "backup-inventory-title";
+      title.textContent = backup.tag ? String(backup.tag) : String(backup.id || "Backup " + (index + 1));
+      const meta = document.createElement("div");
+      meta.className = "backup-inventory-meta";
+      const type = document.createElement("span");
+      type.className = "backup-type-badge";
+      type.textContent = String(backup.type || "backup");
+      meta.appendChild(type);
+      meta.appendChild(document.createTextNode(" · " + String(backup.version || "unknown") + " · " +
+        String(backup.created || "unknown") + " · " + formatBackupSize(backup.size_bytes)));
+      main.appendChild(title);
+      main.appendChild(meta);
+      row.appendChild(radio);
+      row.appendChild(main);
+      list.appendChild(row);
+    });
+  }
+  updateBackupActionState();
+  validateManualBackupTag();
+  const versionModal = document.getElementById("versionModal");
+  if (versionModal && versionModal.style.display !== "none") {
+    anchorModalToForm(versionModal);
+  }
+}
+
+async function fetchBackupInventoryFile() {
+  const response = await fetch(PATHS.BACKUP_INVENTORY + "?_=" + Date.now(), { cache: "no-store" });
+  if (!response.ok) throw new Error("Backup inventory is not available.");
+  const data = await response.json();
+  renderBackupInventory(data);
+  return data;
+}
+
+function submitMaintenanceThroughParent(method, token, payload) {
+  const parentWin = window.parent;
+  if (!parentWin || typeof parentWin[method] !== "function") return false;
+  const opts = { loading: false, skipRefresh: true, waitSec: 0, minLoadingMs: 0, target: "hidden_frame" };
+  if (payload === null || typeof payload === "undefined") return parentWin[method](token, opts);
+  return parentWin[method](token, payload, opts);
+}
+
+function startMaintenanceOperation(options) {
+  stopMaintenancePolling();
+  const token = makeMaintenanceRequestToken();
+  maintenanceRequestToken = token;
+  maintenanceRequestSeen = false;
+  const submitted = submitMaintenanceThroughParent(options.parentMethod, token, options.payload);
+  if (submitted === false) {
+    setMaintenanceStatus("The router rejected the maintenance request.", "error");
+    return false;
+  }
+  setMaintenanceBusy(true);
+  setMaintenanceStatus(options.startMessage || "Request queued…");
+  startPolling();
+  const poll = async () => {
+    try {
+      const response = await fetch(PATHS.MAINTENANCE_RESULT + "?_=" + Date.now(), { cache: "no-store" });
+      if (!response.ok) return;
+      const result = await response.json();
+      if (result.request_token !== maintenanceRequestToken) return;
+      if (!maintenanceRequestSeen) {
+        maintenanceRequestSeen = true;
+        if (maintenanceStartTimeoutTimer) {
+          clearTimeout(maintenanceStartTimeoutTimer);
+          maintenanceStartTimeoutTimer = null;
+        }
+      }
+      if (result.state === "running") {
+        setMaintenanceStatus(result.message || "Operation running…");
+        return;
+      }
+      stopMaintenancePolling();
+      setMaintenanceBusy(false);
+      if (result.state === "success" || result.state === "partial") {
+        setMaintenanceStatus(result.message || "Operation completed.", result.state === "partial" ? "warning" : "success");
+        if (options.operation === "restore" || options.operation === "undo-restore" || options.operation === "undo-update") {
+          try { await fetchBackupInventoryFile(); } catch (_) {}
+          const refreshBtn = document.getElementById("maintenanceRefreshBtn");
+          if (refreshBtn) refreshBtn.style.display = "inline-block";
+        } else {
+          try { await fetchBackupInventoryFile(); } catch (_) {}
+          if (options.operation === "create") {
+            const input = document.getElementById("manualBackupTag");
+            if (input) input.value = "";
+          }
+        }
+      } else if (result.state === "cancelled") {
+        setMaintenanceStatus(result.message || "Operation cancelled.", "warning");
+      } else if (result.state === "busy") {
+        setMaintenanceStatus(result.message || "Another maintenance operation is running.", "warning");
+      } else {
+        setMaintenanceStatus(result.message || "Maintenance operation failed.", "error");
+      }
+    } catch (_) {}
+  };
+  poll();
+  maintenancePollTimer = setInterval(poll, 900);
+  maintenanceStartTimeoutTimer = setTimeout(() => {
+    if (maintenanceRequestSeen) return;
+    stopMaintenancePolling();
+    setMaintenanceBusy(false);
+    setMaintenanceStatus("The router did not start this request. Refresh the backup list and try again.", "error");
+  }, 30000);
+  maintenanceTimeoutTimer = setTimeout(() => {
+    stopMaintenancePolling();
+    setMaintenanceBusy(false);
+    setMaintenanceStatus("Operation timed out in the UI. Check the CLI log before trying again.", "warning");
+  }, (options.operation === "restore" || options.operation === "undo-restore" || options.operation === "undo-update") ? 900000 : 300000);
+  return true;
+}
+
+function refreshBackupInventory() {
+  return startMaintenanceOperation({ parentMethod: "MVM_listBackups", payload: null, operation: "inventory", startMessage: "Checking backups…" });
+}
+
+function validateManualBackupTag() {
+  const input = document.getElementById("manualBackupTag");
+  const btn = document.getElementById("createManualBackupBtn");
+  if (!input || !btn || isUpdateInProgress) return;
+  const valid = /^[A-Za-z0-9][A-Za-z0-9_-]{0,23}$/.test(input.value.trim());
+  const manualCount = backupInventoryData ? Number(backupInventoryData.manual_count || 0) : 0;
+  const manualLimit = backupInventoryData ? Number(backupInventoryData.manual_limit || 3) : 3;
+  btn.disabled = !valid || manualCount >= manualLimit;
+}
+
+async function createManualBackup() {
+  const input = document.getElementById("manualBackupTag");
+  const tag = input ? input.value.trim() : "";
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,23}$/.test(tag)) {
+    setMaintenanceStatus("Enter a valid backup tag first.", "error");
+    return;
+  }
+  if (backupInventoryData && Number(backupInventoryData.manual_count || 0) >= Number(backupInventoryData.manual_limit || 3)) {
+    setMaintenanceStatus("The manual backup limit has been reached. Delete one before creating another.", "warning");
+    return;
+  }
+  const confirmed = await showMaintenanceConfirmation({
+    title: "Create Manual Backup",
+    message: "Create a manual backup tagged \"" + tag + "\"?",
+    confirmLabel: "Create Backup"
+  });
+  if (!confirmed) return;
+  startMaintenanceOperation({ parentMethod: "MVM_createBackup", payload: tag, operation: "create", startMessage: "Creating manual backup…" });
+}
+
+async function restoreSelectedBackup() {
+  const id = selectedBackupId();
+  if (!id) return;
+  const confirmed = await showMaintenanceConfirmation({
+    title: "Restore Backup",
+    message: "Restore \"" + id + "\"?\n\nThis replaces the current MerVLAN installation and settings.",
+    confirmLabel: "Restore Backup",
+    danger: true
+  });
+  if (!confirmed) return;
+  startMaintenanceOperation({ parentMethod: "MVM_restoreBackup", payload: id, operation: "restore", startMessage: "Preparing restore…" });
+}
+
+async function deleteSelectedBackup() {
+  const id = selectedBackupId();
+  if (!id) return;
+  const confirmed = await showMaintenanceConfirmation({
+    title: "Delete Backup",
+    message: "Permanently delete \"" + id + "\"?\n\nThis cannot be undone.",
+    confirmLabel: "Delete Backup",
+    danger: true
+  });
+  if (!confirmed) return;
+  startMaintenanceOperation({ parentMethod: "MVM_deleteBackup", payload: id, operation: "delete", startMessage: "Deleting selected backup…" });
+}
+
+async function deleteAllBackups() {
+  const confirmed = await showMaintenanceConfirmation({
+    title: "Delete All Backups",
+    message: "This permanently deletes every persistent MerVLAN backup and clears Undo Update.\n\nThe temporary Undo Restore file in /tmp is retained. This cannot be undone.",
+    confirmLabel: "Delete All Backups",
+    requiredText: "DELETE ALL",
+    danger: true
+  });
+  if (!confirmed) return;
+  startMaintenanceOperation({ parentMethod: "MVM_deleteAllBackups", payload: null, operation: "delete-all", startMessage: "Deleting all backups…" });
+}
+
+async function undoLastRestore() {
+  const undo = backupInventoryData && backupInventoryData.undo && backupInventoryData.undo.restore;
+  if (!undo || undo.available !== true) {
+    setMaintenanceStatus("No temporary Undo Restore file is available.", "warning");
+    return;
+  }
+  const confirmed = await showMaintenanceConfirmation({
+    title: "Undo Last Restore",
+    message: "Restore the installation that was active before the last restore?\n\nThe temporary Undo Restore file is consumed after success.",
+    confirmLabel: "Undo Restore",
+    danger: true
+  });
+  if (!confirmed) return;
+  startMaintenanceOperation({ parentMethod: "MVM_undoRestore", payload: null, operation: "undo-restore", startMessage: "Preparing Undo Restore…" });
+}
+
+async function undoLastUpdate() {
+  const undo = backupInventoryData && backupInventoryData.undo && backupInventoryData.undo.update;
+  if (!undo || undo.available !== true) {
+    setMaintenanceStatus("No temporary Undo Update shortcut is available.", "warning");
+    return;
+  }
+  const confirmed = await showMaintenanceConfirmation({
+    title: "Undo Last Update",
+    message: "Restore the automatic backup from immediately before the last update?\n\nThe temporary Undo Update shortcut is consumed after success.",
+    confirmLabel: "Undo Update",
+    danger: true
+  });
+  if (!confirmed) return;
+  startMaintenanceOperation({ parentMethod: "MVM_undoUpdate", payload: null, operation: "undo-update", startMessage: "Preparing Undo Update…" });
+}
+
 function openVersionModal() {
   const modal = document.getElementById("versionModal");
   if (!modal) return;
+  settleMaintenanceConfirmation(false);
+  modal.scrollTop = 0;
 
   const overlay = document.getElementById("leftPanelOverlay");
+  const cliLatch = document.getElementById("cliLatch");
   const current = getIndexHtmlVersion();
   const currentText = document.getElementById("currentVersionText");
   if (currentText) {
@@ -5764,6 +6489,35 @@ function openVersionModal() {
   isUpdateInProgress = false;
   stopUpdateSpinner("");
   stopUpdateLogPolling();
+  stopMaintenancePolling();
+  maintenanceRequestToken = "";
+  maintenanceRequestSeen = false;
+  backupInventoryData = null;
+  setMaintenanceStatus("");
+  const maintenanceRefreshBtn = document.getElementById("maintenanceRefreshBtn");
+  if (maintenanceRefreshBtn) maintenanceRefreshBtn.style.display = "none";
+  const backupList = document.getElementById("backupInventoryList");
+  if (backupList) backupList.innerHTML = '<div class="backup-empty">Select Check Backups to load restore points.</div>';
+  const backupCount = document.getElementById("backupCountText");
+  if (backupCount) backupCount.textContent = "Automatic: 0/3   Manual: 0/3";
+  const persistentStorage = document.getElementById("persistentBackupStorageText");
+  if (persistentStorage) persistentStorage.textContent = "Persistent backup storage (JFFS): checking used and available space…";
+  const temporaryStorage = document.getElementById("temporaryBackupStorageText");
+  if (temporaryStorage) temporaryStorage.textContent = "Temporary undo storage (/tmp): checking used and available space…";
+  const undoRestoreStatus = document.getElementById("undoRestoreStatus");
+  if (undoRestoreStatus) {
+    undoRestoreStatus.textContent = "No Undo Restore file detected.";
+    undoRestoreStatus.classList.remove("is-available");
+  }
+  const undoUpdateStatus = document.getElementById("undoUpdateStatus");
+  if (undoUpdateStatus) {
+    undoUpdateStatus.textContent = "No Undo Update shortcut detected.";
+    undoUpdateStatus.classList.remove("is-available");
+  }
+  const manualTag = document.getElementById("manualBackupTag");
+  if (manualTag) manualTag.value = "";
+  setMaintenanceBusy(false);
+  selectVersionModalTab("update");
   showUpdateLogSection(false);
   const logLineEl = document.getElementById("updateLogLine");
   if (logLineEl) {
@@ -5807,7 +6561,10 @@ function openVersionModal() {
   const exitWarning = document.getElementById("updateExitWarning");
   if (exitWarning) exitWarning.style.display = "none";
   const completeMsg = document.getElementById("updateCompleteMessage");
-  if (completeMsg) completeMsg.style.display = "none";
+  if (completeMsg) {
+    completeMsg.textContent = "Update complete — please refresh your browser to load the new version.";
+    completeMsg.style.display = "none";
+  }
   const refreshNowBtn = document.getElementById("refreshNowBtn");
   if (refreshNowBtn) refreshNowBtn.style.display = "none";
 
@@ -5815,6 +6572,8 @@ function openVersionModal() {
   if (channelSelect) {
     channelSelect.value = "main";
   }
+  const clearLogsBeforeUpdate = document.getElementById("clearLogsBeforeUpdate");
+  if (clearLogsBeforeUpdate) clearLogsBeforeUpdate.checked = false;
   updateChannelCapabilityHint("main");
 
   modal.style.display = "block";
@@ -5824,6 +6583,12 @@ function openVersionModal() {
     overlay.classList.add("is-active");
     overlay.style.display = "block";
     overlay.style.pointerEvents = "auto";
+  }
+  if (cliLatch) {
+    if (cliLatch.dataset.prevDisplay === undefined) {
+      cliLatch.dataset.prevDisplay = cliLatch.style.display || "";
+    }
+    cliLatch.style.display = "none";
   }
 }
 
@@ -5835,23 +6600,36 @@ function closeVersionModal() {
       return;
     }
   }
+  settleMaintenanceConfirmation(false);
 
   const modal = document.getElementById("versionModal");
   const overlay = document.getElementById("leftPanelOverlay");
+  const cliLatch = document.getElementById("cliLatch");
 
   if (modal) {
     modal.style.display = "none";
     releaseAnchoredModal(modal);
   }
   if (overlay) {
-    overlay.classList.remove("is-active");
-    overlay.style.display = "none";
-    overlay.style.pointerEvents = "none";
+    const cliPanel = document.getElementById("cliPanel");
+    const keepOverlay = cliPanel && cliPanel.classList.contains("expanded");
+    if (!keepOverlay) {
+      overlay.classList.remove("is-active");
+      overlay.style.display = "none";
+      overlay.style.pointerEvents = "none";
+    }
+  }
+  if (cliLatch) {
+    const previous = cliLatch.dataset.prevDisplay;
+    cliLatch.style.display = previous !== undefined ? previous : "";
+    if (previous !== undefined) delete cliLatch.dataset.prevDisplay;
   }
 
   isUpdateInProgress = false;
   stopUpdateSpinner("");
   stopUpdateLogPolling();
+  stopMaintenancePolling();
+  maintenanceRequestToken = "";
   showUpdateLogSection(false);
 }
 
@@ -6825,14 +7603,15 @@ function forceCloseVersionModal() {
   closeVersionModal();
 }
 
-function submitRefUpdateThroughParent(parentWin, ref) {
-  const payload = { vlanmgr_update_ref: ref };
+function submitRefUpdateThroughParent(parentWin, ref, logPolicy) {
+  logPolicy = logPolicy === "clear" ? "clear" : "keep";
+  const payload = { vlanmgr_update_ref: ref, vlanmgr_update_log_policy: logPolicy };
   const opts = { loading: false, skipRefresh: true, waitSec: 0, minLoadingMs: 0 };
 
   // New parents encode the ref into the service-event action itself, avoiding
   // custom_settings.txt timing/persistence entirely.
   if (parentWin && typeof parentWin.MVM_updateRef === "function") {
-    return parentWin.MVM_updateRef(ref, opts);
+    return parentWin.MVM_updateRef(ref, logPolicy, opts);
   }
   // Compatibility fallback for older parent pages.
   if (parentWin && typeof parentWin.MVM_exec === "function") {
@@ -6852,6 +7631,8 @@ async function runUpdateFromModal(buttonEl) {
   let channel = buttonEl.dataset.channel;
   let ref = buttonEl.dataset.ref || "";
   let latest = buttonEl.dataset.latest || "";
+  const clearLogsEl = document.getElementById("clearLogsBeforeUpdate");
+  const logPolicy = clearLogsEl && clearLogsEl.checked ? "clear" : "keep";
 
   // Custom targets are derived from the live controls at click time. Never
   // trust release metadata that may remain on the shared button.
@@ -6871,26 +7652,10 @@ async function runUpdateFromModal(buttonEl) {
     ref = "refs/heads/" + branch;
   }
 
-  // Dev and main_direct channels: use queueServiceAction directly (no version ref needed)
+  // Normalize every channel to an explicit ref so the target and log policy
+  // travel in one encoded service action and cannot be reordered.
   if (channel === "dev" || channel === "main_direct") {
-    const actionName = channel === "dev" ? "updatedev_vlanmgr" : "update_vlanmgr";
-    const desc = channel === "dev"
-      ? `Update MerVLAN (development channel${latest ? " \u2192 v" + latest : ""})`
-      : `Update MerVLAN (latest stable release${latest ? " \u2014 v" + latest : ""})`;
-    isUpdateInProgress = true;
-    startUpdateSpinner();
-    startUpdateLogPolling();
-    const submitted = await queueServiceAction(actionName, {
-      button: buttonEl,
-      description: desc,
-      cooldownMs: 10000
-    });
-    if (submitted !== true) {
-      isUpdateInProgress = false;
-      stopUpdateSpinner("Error");
-      stopUpdateLogPolling();
-    }
-    return;
+    ref = channel === "dev" ? "refs/heads/dev" : "refs/heads/main";
   }
 
   // Custom branch: verify the branch exists on GitHub before triggering
@@ -6911,11 +7676,10 @@ async function runUpdateFromModal(buttonEl) {
     if (statusEl2) { statusEl2.textContent = ""; statusEl2.style.color = ""; }
   }
 
-  // Release or custom branch: pass the selected ref through the legacy update
-  // event so older installed parent pages and event handlers remain compatible.
-  const desc = (channel === "custom" && latest)
+  const descBase = (channel === "custom" && latest)
     ? `MerVLAN install from branch: ${latest}`
     : `MerVLAN update to ${ref || "selected release"}`;
+  const desc = descBase + (logPolicy === "clear" ? " (clear existing logs first)" : " (keep existing logs)");
 
   isUpdateInProgress = true;
   startUpdateSpinner();
@@ -6925,7 +7689,7 @@ async function runUpdateFromModal(buttonEl) {
 
   const parentWin = window.parent;
   if (parentWin && (typeof parentWin.MVM_updateRef === "function" || typeof parentWin.MVM_exec === "function" || typeof parentWin.MVM_updateRelease === "function")) {
-    const submitted = submitRefUpdateThroughParent(parentWin, ref);
+    const submitted = submitRefUpdateThroughParent(parentWin, ref, logPolicy);
     // Older MVM_exec implementations returned undefined after a successful
     // submit. Only an explicit false is a rejection.
     if (submitted === false) {

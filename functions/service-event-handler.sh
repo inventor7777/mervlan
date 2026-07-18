@@ -12,7 +12,7 @@
 #  |__/     |__/ \_______/|__/          \_/    |________/|__/  |__/|__/  \__/  #
 #                                                                              #
 # ============================================================================ #
-#          - File: service-event-handler.sh || version="0.60"                  #
+#          - File: service-event-handler.sh || version="0.61"                  #
 # ============================================================================ #
 # - Purpose:    Event handler for http and service events                      #
 # ============================================================================ #
@@ -150,9 +150,19 @@ get_verified_action_token() {
 
 decode_update_ref_action() {
   _ura_encoded="${1#updateref_vlanmgr_}"
+  _ura_policy=keep
   _ura_kind="${_ura_encoded%%_*}"
   _ura_hex="${_ura_encoded#*_}"
   [ "$_ura_hex" != "$_ura_encoded" ] || return 1
+  case "$_ura_kind" in
+    k|c)
+      [ "$_ura_kind" = "c" ] && _ura_policy=clear
+      _ura_encoded="$_ura_hex"
+      _ura_kind="${_ura_encoded%%_*}"
+      _ura_hex="${_ura_encoded#*_}"
+      [ "$_ura_hex" != "$_ura_encoded" ] || return 1
+      ;;
+  esac
   case "$_ura_kind" in h|t) ;; *) return 1 ;; esac
   _ura_name=$(decode_hex_ascii "$_ura_hex") || return 1
   _ura_clean=$(printf '%s' "$_ura_name" | tr -cd 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/._-')
@@ -160,9 +170,78 @@ decode_update_ref_action() {
   case "$_ura_name" in *..*|*//*|/*|*/|.*|*.lock) return 1 ;; esac
 
   case "$_ura_kind" in
-    h) printf 'refs/heads/%s\n' "$_ura_name" ;;
-    t) case "$_ura_name" in v[0-9]*) printf 'refs/tags/%s\n' "$_ura_name" ;; *) return 1 ;; esac ;;
+    h) printf 'refs/heads/%s|%s\n' "$_ura_name" "$_ura_policy" ;;
+    t) case "$_ura_name" in v[0-9]*) printf 'refs/tags/%s|%s\n' "$_ura_name" "$_ura_policy" ;; *) return 1 ;; esac ;;
   esac
+}
+
+decode_maintenance_action() {
+  _dma_action="$1"
+  _dma_base="$2"
+  _dma_payload_required="$3"
+  _dma_encoded="${_dma_action#${_dma_base}_}"
+  [ "$_dma_encoded" != "$_dma_action" ] || return 1
+  _dma_token_hex="${_dma_encoded%%_*}"
+  if [ "$_dma_encoded" = "$_dma_token_hex" ]; then
+    _dma_payload_hex=""
+  else
+    _dma_payload_hex="${_dma_encoded#*_}"
+  fi
+  [ -n "$_dma_token_hex" ] && [ "${#_dma_token_hex}" -le 64 ] || return 1
+  _dma_token=$(decode_hex_ascii "$_dma_token_hex") || return 1
+  _dma_token_clean=$(printf '%s' "$_dma_token" | tr -cd 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-')
+  [ -n "$_dma_token" ] && [ "$_dma_token" = "$_dma_token_clean" ] || return 1
+  if [ "$_dma_payload_required" = "1" ]; then
+    [ -n "$_dma_payload_hex" ] && [ "${#_dma_payload_hex}" -le 320 ] || return 1
+    _dma_payload=$(decode_hex_ascii "$_dma_payload_hex") || return 1
+  else
+    [ -z "$_dma_payload_hex" ] || return 1
+    _dma_payload=""
+  fi
+  printf '%s|%s\n' "$_dma_token" "$_dma_payload"
+}
+
+decode_maintenance_archive_action() {
+  _dmaa_action="$1"
+  _dmaa_base="$2"
+  _dmaa_encoded="${_dmaa_action#${_dmaa_base}_}"
+  [ "$_dmaa_encoded" != "$_dmaa_action" ] || return 1
+  _dmaa_token_hex="${_dmaa_encoded%%_*}"
+  _dmaa_archive_key="${_dmaa_encoded#*_}"
+  [ "$_dmaa_archive_key" != "$_dmaa_encoded" ] || return 1
+  [ -n "$_dmaa_token_hex" ] && [ "${#_dmaa_token_hex}" -le 64 ] || return 1
+  _dmaa_token=$(decode_hex_ascii "$_dmaa_token_hex") || return 1
+  _dmaa_token_clean=$(printf '%s' "$_dmaa_token" | tr -cd 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-')
+  [ -n "$_dmaa_token" ] && [ "$_dmaa_token" = "$_dmaa_token_clean" ] || return 1
+
+  case "$_dmaa_archive_key" in
+    a.*)
+      _dmaa_archive_tail=${_dmaa_archive_key#a.}
+      printf '%s\n' "$_dmaa_archive_tail" | grep -Eq '^[0-9]{8}-[0-9]{6}(-[0-9]+)?$' || return 1
+      _dmaa_archive_id="mervlan.backup.${_dmaa_archive_tail}.tar.gz"
+      ;;
+    m.*)
+      printf '%s\n' "$_dmaa_archive_key" | grep -Eq '^m\.[0-9]{8}-[0-9]{6}\.[A-Za-z0-9][A-Za-z0-9_-]{0,23}$' || return 1
+      _dmaa_archive_tail=${_dmaa_archive_key#m.}
+      _dmaa_timestamp=${_dmaa_archive_tail%%.*}
+      _dmaa_tag=${_dmaa_archive_tail#*.}
+      _dmaa_archive_id="mervlan.manual.backup.${_dmaa_timestamp}.${_dmaa_tag}.tar.gz"
+      ;;
+    *) return 1 ;;
+  esac
+  maintenance_archive_valid "$_dmaa_archive_id" || return 1
+  printf '%s|%s\n' "$_dmaa_token" "$_dmaa_archive_id"
+}
+
+maintenance_tag_valid() {
+  printf '%s\n' "$1" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9_-]{0,23}$'
+}
+
+maintenance_archive_valid() {
+  _mav_id="$1"
+  [ "${_mav_id##*/}" = "$_mav_id" ] || return 1
+  case "$_mav_id" in *..*|*[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-]*) return 1 ;; esac
+  printf '%s\n' "$_mav_id" | grep -Eq '^mervlan\.backup\.[A-Za-z0-9_-]+\.tar\.gz$|^mervlan\.manual\.backup\.[0-9]{8}-[0-9]{6}\.[A-Za-z0-9][A-Za-z0-9_-]{0,23}\.tar\.gz$'
 }
 
 json_get_flag() {
@@ -194,7 +273,10 @@ case "${TYPE}_${EVENT}" in
   save_vlanmgr|apply_vlanmgr|sync_vlanmgr|executenodes_vlanmgr|\
   executenodesonly_vlanmgr|genkey_vlanmgr|enableservice_vlanmgr|\
   disableservice_vlanmgr|enableservice_vlanmgr_vrt_*|disableservice_vlanmgr_vrt_*|checkservice_vlanmgr|collectclients_vlanmgr|\
-  clearclilog_vlanmgr|update_vlanmgr|updatedev_vlanmgr|updaterelease_vlanmgr|updateref_vlanmgr_*|hwprobe_vlanmgr|macrefresh_vlanmgr|\
+  clearclilog_vlanmgr|update_vlanmgr|updatedev_vlanmgr|updaterelease_vlanmgr|updateref_vlanmgr_*|\
+  backupinventory_vlanmgr_*|manualbackup_vlanmgr_*|deletebackup_vlanmgr_*|deleteallbackups_vlanmgr_*|restorebackup_vlanmgr_*|\
+  undorestore_vlanmgr_*|undoupdate_vlanmgr_*|\
+  hwprobe_vlanmgr|macrefresh_vlanmgr|\
   macclientmeta_vlanmgr)
     APP_EVENT=1
     ;;
@@ -519,11 +601,13 @@ case "${TYPE}_${EVENT}" in
     dispatch_if_executable "/jffs/addons/mervlan/functions/update_mervlan.sh" update dev
     ;;
   updateref_vlanmgr_*)
-    _encoded_update_ref="$(decode_update_ref_action "${TYPE}_${EVENT}")"
-    case "$_encoded_update_ref" in
-      refs/heads/?*|refs/tags/v[0-9]*)
-        logger -t "VLANMgr" "handler: decoded explicit update ref '$_encoded_update_ref'"
-        dispatch_if_executable "/jffs/addons/mervlan/functions/update_mervlan.sh" update "$_encoded_update_ref"
+    _encoded_update_request="$(decode_update_ref_action "${TYPE}_${EVENT}")"
+    _encoded_update_ref=${_encoded_update_request%%|*}
+    _encoded_update_policy=${_encoded_update_request#*|}
+    case "$_encoded_update_ref|$_encoded_update_policy" in
+      refs/heads/?*'|'keep|refs/heads/?*'|'clear|refs/tags/v[0-9]*'|'keep|refs/tags/v[0-9]*'|'clear)
+        logger -t "VLANMgr" "handler: decoded explicit update ref '$_encoded_update_ref' (logs=$_encoded_update_policy)"
+        dispatch_if_executable "/jffs/addons/mervlan/functions/update_mervlan.sh" update "$_encoded_update_ref" "--logs=$_encoded_update_policy"
         ;;
       *)
         logger -t "VLANMgr" "handler: rejected invalid encoded update ref from '${TYPE}_${EVENT}'"
@@ -542,6 +626,72 @@ case "${TYPE}_${EVENT}" in
             logger -t "VLANMgr" "handler: updaterelease_vlanmgr - invalid or missing ref '$_upd_ref'"
             ;;
     esac
+    ;;
+  backupinventory_vlanmgr_*)
+    _maint_decoded=$(decode_maintenance_action "${TYPE}_${EVENT}" backupinventory_vlanmgr 0)
+    _maint_token=${_maint_decoded%%|*}
+    if [ -n "$_maint_decoded" ] && [ -n "$_maint_token" ]; then
+      dispatch_if_executable "/jffs/addons/mervlan/functions/update_mervlan.sh" inventory "$_maint_token"
+    else
+      logger -t "VLANMgr" "handler: rejected malformed backup inventory action"
+    fi
+    ;;
+  manualbackup_vlanmgr_*)
+    _maint_decoded=$(decode_maintenance_action "${TYPE}_${EVENT}" manualbackup_vlanmgr 1)
+    _maint_token=${_maint_decoded%%|*}
+    _maint_payload=${_maint_decoded#*|}
+    if [ -n "$_maint_decoded" ] && maintenance_tag_valid "$_maint_payload"; then
+      dispatch_if_executable "/jffs/addons/mervlan/functions/update_mervlan.sh" backup create "$_maint_payload" yes "$_maint_token"
+    else
+      logger -t "VLANMgr" "handler: rejected malformed manual backup action"
+    fi
+    ;;
+  deletebackup_vlanmgr_*)
+    _maint_decoded=$(decode_maintenance_archive_action "${TYPE}_${EVENT}" deletebackup_vlanmgr)
+    _maint_token=${_maint_decoded%%|*}
+    _maint_payload=${_maint_decoded#*|}
+    if [ -n "$_maint_decoded" ] && maintenance_archive_valid "$_maint_payload"; then
+      dispatch_if_executable "/jffs/addons/mervlan/functions/update_mervlan.sh" backup delete "$_maint_payload" yes "$_maint_token"
+    else
+      logger -t "VLANMgr" "handler: rejected malformed backup deletion action"
+    fi
+    ;;
+  deleteallbackups_vlanmgr_*)
+    _maint_decoded=$(decode_maintenance_action "${TYPE}_${EVENT}" deleteallbackups_vlanmgr 0)
+    _maint_token=${_maint_decoded%%|*}
+    if [ -n "$_maint_decoded" ] && [ -n "$_maint_token" ]; then
+      dispatch_if_executable "/jffs/addons/mervlan/functions/update_mervlan.sh" backup delete-all yes "$_maint_token"
+    else
+      logger -t "VLANMgr" "handler: rejected malformed delete-all action"
+    fi
+    ;;
+  restorebackup_vlanmgr_*)
+    _maint_decoded=$(decode_maintenance_archive_action "${TYPE}_${EVENT}" restorebackup_vlanmgr)
+    _maint_token=${_maint_decoded%%|*}
+    _maint_payload=${_maint_decoded#*|}
+    if [ -n "$_maint_decoded" ] && maintenance_archive_valid "$_maint_payload"; then
+      dispatch_if_executable "/jffs/addons/mervlan/functions/update_mervlan.sh" restore "$_maint_payload" yes "$_maint_token"
+    else
+      logger -t "VLANMgr" "handler: rejected malformed restore action"
+    fi
+    ;;
+  undorestore_vlanmgr_*)
+    _maint_decoded=$(decode_maintenance_action "${TYPE}_${EVENT}" undorestore_vlanmgr 0)
+    _maint_token=${_maint_decoded%%|*}
+    if [ -n "$_maint_decoded" ] && [ -n "$_maint_token" ]; then
+      dispatch_if_executable "/jffs/addons/mervlan/functions/update_mervlan.sh" undo restore yes "$_maint_token"
+    else
+      logger -t "VLANMgr" "handler: rejected malformed Undo Restore action"
+    fi
+    ;;
+  undoupdate_vlanmgr_*)
+    _maint_decoded=$(decode_maintenance_action "${TYPE}_${EVENT}" undoupdate_vlanmgr 0)
+    _maint_token=${_maint_decoded%%|*}
+    if [ -n "$_maint_decoded" ] && [ -n "$_maint_token" ]; then
+      dispatch_if_executable "/jffs/addons/mervlan/functions/update_mervlan.sh" undo update yes "$_maint_token"
+    else
+      logger -t "VLANMgr" "handler: rejected malformed Undo Update action"
+    fi
     ;;
   hwprobe_vlanmgr)
     # Re-run hardware probe to refresh the Hardware profile in settings.json

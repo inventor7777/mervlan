@@ -1,3 +1,72 @@
+mervlan v0.53.22-dev
+
+New: Integrated backup and transactional restore management
+- The version modal now has Update and Restore tabs. Restore lists live on-router
+  automatic/manual archives and can create, restore, delete, or delete all with
+  explicit confirmations and correlated backend completion results.
+- Added up to three tagged manual backups alongside the three automatically
+  rotated update backups. Manual backups are never silently rotated; the user
+  must delete one before creating a fourth.
+- update_mervlan.sh now provides interactive and argument-driven backup, list,
+  selected-delete, delete-all, and exact-archive restore commands for GUI/CLI
+  parity. Existing update and numeric restore entry points remain compatible.
+- Restore validates archive paths and core files before activation, stages on
+  the installation filesystem, keeps the current tree for rollback, refreshes
+  public files and hooks, honors the restored boot state, synchronizes nodes,
+  and keeps the displaced installation as one temporary Undo Restore file.
+- Multi-device restore now reads the node list from the selected backup, clears
+  stale addon files on those nodes, synchronizes the restored node runtime,
+  pushes the restored MAC Shield database/overrides, and reapplies the backed-up
+  enabled or disabled boot state on every reachable node.
+- Automatic update backups now retain the real pre-update BOOT_ENABLED value and
+  MAC Shield checkpoint instead of capturing update teardown's temporary
+  disabled/removed state.
+- Updates, backup creation, deletion, and restore now share a stale-safe
+  maintenance lock so different service-event names cannot overlap destructive
+  operations.
+- Added atomic backup_inventory.json and maintenance_result.json publication,
+  request-token correlation, independent retention pools, and strict encoded
+  service-event validation for tags and archive identifiers.
+- The Restore page now always reports persistent JFFS backup usage/available
+  space and temporary undo usage/available space. Backup, update, restore, and
+  undo paths preflight the destination filesystem with a safety reserve.
+- Added one reboot-volatile Undo Restore archive and one reboot-volatile Undo
+  Update shortcut. Restore undo no longer consumes automatic rotation; update
+  undo reuses the existing automatic pre-update archive instead of duplicating
+  it in RAM. Both actions revalidate their source and are consumed on success.
+- Selected delete/restore actions now send compact validated archive keys so
+  firmware action-name limits cannot silently drop the request. The modal also
+  unlocks if a maintenance request never starts or the modal is reopened.
+- Delete All Backups now sits beside Delete Selected and explains its persistent
+  deletion/temporary-undo scope through a themed keyboard-accessible tooltip.
+- Added a comprehensive internal reinstall mode for update, restore, and their
+  rollback paths. It rebuilds the same ASP/menu, web assets, symlinks, runtime
+  directories, missing logs, metadata, and permissions as installation while
+  preserving logs and leaving hook/node reconciliation to the transaction. A
+  reinstall-only completeness check rejects missing ASP/menu/assets, links,
+  logs, or conditional SSH-key publication instead of silently continuing.
+- Update and restore now deliberately stop main/node activity, remove the old
+  generation's template blocks, synchronize target files, always reinstall the
+  configured-node service/addon baseline, and then explicitly apply the saved
+  enabled or disabled BOOT_ENABLED state. Final reports retry mismatches once;
+  persistent main mismatches roll back and named node failures are warnings.
+- Update now offers Keep or Clear Existing Logs in the web UI and through
+  --logs=keep/--logs=clear. Clear runs only after the shared lock is acquired
+  and truncates in place before the first update audit entry, so the complete
+  new update remains available and public log links stay valid.
+- Central log maintenance now bounds every managed log to the newest 2,000
+  lines and 1 MiB by default. The existing health cron performs a cheap due
+  gate and invokes the shared helper no more than once per 24 hours; maintenance
+  also runs at the end of update, restore, and backup operations.
+
+Documentation:
+- Updated README.md and docs/HELP.md for the Restore tab, manual backup naming
+  and limits, CLI/argument commands, deletion warnings, rollback behavior, and
+  the automatic post-restore lifecycle, log policy/limits, comprehensive public
+  reprovisioning, template refresh ordering, and final main/node verification.
+
+################ END OF CURRENT CHANGELOG
+
 mervlan v0.53.21-dev
 
 Fixed: GUI custom-branch and tagged-release updates not starting

@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <!-- mervlan.asp version="0.54" -->
+  <!-- mervlan.asp version="0.55" -->
 <meta http-equiv="X-UA-Compatible" content="IE=Edge">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta http-equiv="Pragma" content="no-cache">
@@ -123,10 +123,13 @@ function showLoadingSafe(secHint) {
 function MVM_exec(actionScriptName, settingsObjOrNull, opts) {
   opts = opts || {};
 
-  var isEncodedUpdateRef = /^updateref_vlanmgr_[ht]_[0-9a-f]+$/.test(actionScriptName);
+  var isEncodedUpdateRef = /^updateref_vlanmgr_(?:[kc]_)?[ht]_[0-9a-f]+$/.test(actionScriptName);
+  var isMaintenanceAction = /^(backupinventory_vlanmgr|deleteallbackups_vlanmgr|undorestore_vlanmgr|undoupdate_vlanmgr)_[0-9a-f]+$/.test(actionScriptName) ||
+    /^manualbackup_vlanmgr_[0-9a-f]+_[0-9a-f]+$/.test(actionScriptName) ||
+    /^(deletebackup_vlanmgr|restorebackup_vlanmgr)_[0-9a-f]+_[am]\.[A-Za-z0-9._-]+$/.test(actionScriptName);
   var verifiedActionMatch = /^(.+)_vrt_([0-9a-f]+)$/.exec(actionScriptName);
   var isVerifiedAction = !!(verifiedActionMatch && MVM_ALLOWED_ACTIONS.has(verifiedActionMatch[1]));
-  if (!MVM_ALLOWED_ACTIONS.has(actionScriptName) && !isEncodedUpdateRef && !isVerifiedAction) {
+  if (!MVM_ALLOWED_ACTIONS.has(actionScriptName) && !isEncodedUpdateRef && !isMaintenanceAction && !isVerifiedAction) {
     if (window.console && typeof console.warn === "function") {
       console.warn("[MVM] blocked disallowed action", actionScriptName);
     }
@@ -478,7 +481,13 @@ function MVM_updateDev(opts)                 { return MVM_exec("updatedev_vlanmg
 // Older installed service-event handlers already understand this event; the
 // updater consumes vlanmgr_update_ref and replaces the fallback "dev" target.
 function MVM_updateRelease(ref, opts)        { return MVM_exec("updatedev_vlanmgr", { vlanmgr_update_ref: ref }, mvmOptsFor("updatedev_vlanmgr", opts)); }
-function MVM_updateRef(ref, opts) {
+function MVM_updateRef(ref, logPolicy, opts) {
+  // Backward-compatible two-argument form: MVM_updateRef(ref, opts).
+  if (logPolicy && typeof logPolicy === "object") {
+    opts = logPolicy;
+    logPolicy = "keep";
+  }
+  logPolicy = logPolicy === "clear" ? "clear" : "keep";
   var value = String(ref || "");
   var kind = "";
   var name = "";
@@ -501,12 +510,86 @@ function MVM_updateRef(ref, opts) {
     if (code > 127) return false;
     hex += ("0" + code.toString(16)).slice(-2);
   }
-  var actionName = "updateref_vlanmgr_" + kind + "_" + hex;
+  var actionName = "updateref_vlanmgr_" + (logPolicy === "clear" ? "c" : "k") + "_" + kind + "_" + hex;
   var actionOpts = { loading: false, skipRefresh: true, waitSec: 0, minLoadingMs: 0, target: "hidden_frame" };
   if (opts && typeof opts === "object") {
     Object.keys(opts).forEach(function(key) { actionOpts[key] = opts[key]; });
   }
   return MVM_exec(actionName, null, actionOpts);
+}
+function MVM_hexAscii(value) {
+  value = String(value || "");
+  if (!value) return "";
+  var hex = "";
+  for (var i = 0; i < value.length; i++) {
+    var code = value.charCodeAt(i);
+    if (code > 127) return "";
+    hex += ("0" + code.toString(16)).slice(-2);
+  }
+  return hex;
+}
+function MVM_maintenanceAction(base, requestToken, payload, opts) {
+  var token = String(requestToken || "");
+  if (!/^[A-Za-z0-9._-]{1,32}$/.test(token)) return false;
+  var tokenHex = MVM_hexAscii(token);
+  if (!tokenHex) return false;
+  var actionName = base + "_" + tokenHex;
+  if (payload !== null && typeof payload !== "undefined") {
+    var payloadHex = MVM_hexAscii(String(payload));
+    if (!payloadHex) return false;
+    actionName += "_" + payloadHex;
+  }
+  if (actionName.length > 120) return false;
+  var actionOpts = { loading: false, skipRefresh: true, waitSec: 0, minLoadingMs: 0, target: "hidden_frame" };
+  if (opts && typeof opts === "object") {
+    Object.keys(opts).forEach(function(key) { actionOpts[key] = opts[key]; });
+  }
+  return MVM_exec(actionName, null, actionOpts);
+}
+function MVM_backupArchiveKey(archiveId) {
+  var id = String(archiveId || "");
+  var match = /^mervlan\.backup\.([0-9]{8}-[0-9]{6}(?:-[0-9]+)?)\.tar\.gz$/.exec(id);
+  if (match) return "a." + match[1];
+  match = /^mervlan\.manual\.backup\.([0-9]{8}-[0-9]{6})\.([A-Za-z0-9][A-Za-z0-9_-]{0,23})\.tar\.gz$/.exec(id);
+  if (match) return "m." + match[1] + "." + match[2];
+  return "";
+}
+function MVM_archiveMaintenanceAction(base, requestToken, archiveId, opts) {
+  var token = String(requestToken || "");
+  if (!/^[A-Za-z0-9._-]{1,32}$/.test(token)) return false;
+  var tokenHex = MVM_hexAscii(token);
+  var archiveKey = MVM_backupArchiveKey(archiveId);
+  if (!tokenHex || !archiveKey) return false;
+  var actionName = base + "_" + tokenHex + "_" + archiveKey;
+  if (actionName.length > 120) return false;
+  var actionOpts = { loading: false, skipRefresh: true, waitSec: 0, minLoadingMs: 0, target: "hidden_frame" };
+  if (opts && typeof opts === "object") {
+    Object.keys(opts).forEach(function(key) { actionOpts[key] = opts[key]; });
+  }
+  return MVM_exec(actionName, null, actionOpts);
+}
+function MVM_listBackups(requestToken, opts) {
+  return MVM_maintenanceAction("backupinventory_vlanmgr", requestToken, null, opts);
+}
+function MVM_createBackup(requestToken, tag, opts) {
+  tag = String(tag || "");
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,23}$/.test(tag)) return false;
+  return MVM_maintenanceAction("manualbackup_vlanmgr", requestToken, tag, opts);
+}
+function MVM_deleteBackup(requestToken, archiveId, opts) {
+  return MVM_archiveMaintenanceAction("deletebackup_vlanmgr", requestToken, archiveId, opts);
+}
+function MVM_deleteAllBackups(requestToken, opts) {
+  return MVM_maintenanceAction("deleteallbackups_vlanmgr", requestToken, null, opts);
+}
+function MVM_restoreBackup(requestToken, archiveId, opts) {
+  return MVM_archiveMaintenanceAction("restorebackup_vlanmgr", requestToken, archiveId, opts);
+}
+function MVM_undoRestore(requestToken, opts) {
+  return MVM_maintenanceAction("undorestore_vlanmgr", requestToken, null, opts);
+}
+function MVM_undoUpdate(requestToken, opts) {
+  return MVM_maintenanceAction("undoupdate_vlanmgr", requestToken, null, opts);
 }
 function MVM_hwprobe(opts)                    { return MVM_exec("hwprobe_vlanmgr",       null,        mvmOptsFor("hwprobe_vlanmgr",       opts)); }
 function MVM_macRefresh(opts)                 { return MVM_exec("macrefresh_vlanmgr",    null,        mvmOptsFor("macrefresh_vlanmgr",    opts)); }

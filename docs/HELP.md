@@ -550,6 +550,8 @@ Log files on the router (stored in RAM - cleared on reboot):
 /tmp/mervlan_tmp/logs/boot_wrap.log
 ```
 
+The shared logging helper maintains every `*.log` file in this directory, including boot and custom channels. By default it retains the newest 2,000 lines and applies a 1 MiB ceiling to each file. The five-minute health cron only performs a lightweight due check, so cron-triggered trimming runs at most once every 24 hours; manager runs and update, restore, or backup completion may invoke the same helper sooner when useful. Update can retain this bounded history or clear it after obtaining the maintenance lock. Clearing truncates files in place and immediately starts the new update audit trail, so public log links remain valid and the update itself is not erased.
+
 ### Auto-Heal System
 
 When Apply on Boot is enabled, MerVLAN monitors VLAN health automatically every five minutes in the background.
@@ -627,7 +629,7 @@ NODE2 (192.168.1.51):  br30
 <h2 id="updating-mervlan">7. Updating or Restoring MerVLAN <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
 
 > [!NOTE]
-> Updates preserve your settings, SSH keys, MAC Shield databases, and local backups whenever possible. After updating, MerVLAN refreshes the public web UI files and reapplies the required service hooks. Refresh your browser after the update to load the latest web interface.
+> Updates preserve your settings, SSH keys, MAC Shield databases, local backups, and existing logs whenever possible. The Update tab can instead clear existing logs immediately after obtaining the maintenance lock; the complete new update is still logged. After updating, MerVLAN comprehensively reprovisions the public/runtime installation and reapplies the required service hooks. Refresh your browser after the update to load the latest web interface.
 
 MerVLAN can be updated in place without losing its existing configuration or SSH credentials.
 
@@ -650,13 +652,16 @@ Temporary test branches, normally named using the `dev-test<number>` format, may
 ### Updating through the web UI
 
 1. Open the version modal from the version button in the bottom-right corner.
-2. Select a channel.
+2. Leave the default **Update** tab selected and choose a channel.
 3. For **Stable (releases)**, click <kbd>Check for updates</kbd> and choose a tagged version. For **Custom branch**, enter the branch name directly.
-4. Review the upgrade, channel-switch, or downgrade message and optionally open the changelog.
-5. Click the displayed update or install button and leave the operation running until completion.
-6. Refresh the web UI when prompted so the newly installed files are loaded.
+4. Leave **Clear existing logs before update** unchecked to retain history within the configured bounds, or select it to empty existing logs immediately before the new update log begins.
+5. Review the upgrade, channel-switch, or downgrade message and optionally open the changelog.
+6. Click the displayed update or install button and leave the operation running until completion.
+7. Refresh the web UI when prompted so the newly installed files are loaded.
 
 Every channel displays the same downgrade warning when its known target version is older than the installed version. Stable releases allow arbitrary tagged-version selection; Stable latest and Development allow installing their current branch head even when it is older, but do not provide an older-version picker. Custom branches are compared when their changelog exposes a version. Use a tagged release, an explicit ref, or a local restore point when reverting to a specific older build. Attempting to close the modal while an update is active displays a confirmation warning; closing the UI does not safely cancel the backend operation.
+
+The **Restore** tab is the backup-management frontend. Select <kbd>Check Backups</kbd> to load the current on-router inventory. The page always reports persistent JFFS backup usage/available space and temporary `/tmp` undo usage/available space. Automatic and manual archives can both be selected for restore or deletion. The tab can also create tagged manual backups, permanently delete every persistent backup after an additional `DELETE ALL` confirmation, and expose temporary **Undo Restore** or **Undo Update** actions when their backend sources are still present. Update, backup, restore, undo, and deletion share one maintenance lock, so overlapping destructive operations are rejected.
 
 ### Manual Update Commands
 
@@ -665,7 +670,16 @@ Every channel displays the same downgrade warning when its known target version 
 | <pre>`sh functions/update_mervlan.sh`</pre> | Update MerVLAN to the latest version available on the `main` public beta channel. |
 | <pre>`sh functions/update_mervlan.sh dev`</pre> | Update MerVLAN to the latest version available on the `dev` development channel. |
 | <pre>`sh functions/update_mervlan.sh update dev`</pre> | Explicitly run a development-channel update. This performs the same type of update as selecting `dev` through the web UI. |
-| <pre>`sh functions/update_mervlan.sh restore`</pre> | Open the restore menu and restore a previously created local MerVLAN backup. |
+| <pre>`sh functions/update_mervlan.sh update dev --logs=keep`</pre> | Explicitly retain existing logs during the development update. This is the default. |
+| <pre>`sh functions/update_mervlan.sh update dev --logs=clear`</pre> | Clear existing logs after the maintenance lock is acquired, then preserve the complete new update log. |
+| <pre>`sh functions/update_mervlan.sh backup`</pre> | Open the interactive manual-backup and deletion menu. |
+| <pre>`sh functions/update_mervlan.sh backup create TAG`</pre> | Create a tagged manual backup. Tags use 1-24 letters, numbers, `_`, or `-`. |
+| <pre>`sh functions/update_mervlan.sh backup delete ARCHIVE yes`</pre> | Permanently delete one exact automatic or manual backup. |
+| <pre>`sh functions/update_mervlan.sh backup delete-all yes`</pre> | Permanently delete all contents of `/jffs/addons/mervlan_backups`. |
+| <pre>`sh functions/update_mervlan.sh restore`</pre> | Open the interactive restore and backup-maintenance menu. |
+| <pre>`sh functions/update_mervlan.sh restore ARCHIVE yes`</pre> | Restore an exact archive through the non-interactive argument path used by the web UI. |
+| <pre>`sh functions/update_mervlan.sh undo restore yes`</pre> | Undo the last successful restore from its temporary `/tmp` archive. The source is consumed after success. |
+| <pre>`sh functions/update_mervlan.sh undo update yes`</pre> | Undo the last successful update through its temporary marker to the automatic pre-update archive. |
 | <pre>`sh functions/update_mervlan.sh BRANCH`</pre> | Replace `BRANCH` with the name of a custom development or test branch.<br>For example, run `sh functions/update_mervlan.sh dev-test9` to update MerVLAN from the `dev-test9` branch. |
 | <pre>`sh functions/update_mervlan.sh refs/tags/v0.53.15`</pre> | Install an explicit tagged release. Replace the example tag with the required release tag. |
 
@@ -684,9 +698,11 @@ During an update, the updater will:
 - Preserve `settings/settings.json`, SSH keys, MAC Shield databases, and local backups whenever possible.
 - Perform an atomic replacement of the installed version.
 - Re-run the hardware probe.
-- Refresh the public web UI files.
-- Reinstall the required service hooks.
+- Stop active main/node runtime work, then remove the exact old-version service and addon template blocks before replacing files.
+- Comprehensively reprovision the public/runtime installation: ASP/menu registration, web assets, settings/log/result symlinks, SSH-key publication, permissions, runtime directories, and missing log files are all rebuilt without truncating retained logs.
 - Automatically synchronize configured remote nodes when SSH is enabled and the nodes are reachable.
+- Reinstall target-version node baseline templates regardless of boot preference, then explicitly run target-version enable or disable according to `BOOT_ENABLED` on the main unit and nodes.
+- Verify the resulting main and node runtime reports. A persistent main mismatch rolls the source, public projection, nodes, and original hook state back; an unreachable or mismatched named node is reported as partial success after one retry.
 
 If an update does not behave as expected, or the configuration becomes corrupted, use the built-in restore function to return to one of the locally stored MerVLAN backups.
 
@@ -697,78 +713,61 @@ Updating through the web UI remains the recommended method for normal use. Manua
 
 ### Restoring a Previous Backup
 
-MerVLAN keeps the three newest local backups created during updates. Restoring a backup replaces the current MerVLAN installation, settings, and stored data with the selected restore point.
+MerVLAN keeps the three newest automatic backups created during updates and up to three additional tagged manual backups. Manual backups are not rotated automatically: after the third, delete one before creating another. One temporary Undo Restore file and one temporary Undo Update marker may also be available in `/tmp`; both shortcuts disappear on reboot or if temporary storage is cleared. The automatic archive referenced by Undo Update remains in the normal persistent inventory after its shortcut expires. Restoring either persistent type or using either undo action replaces the current MerVLAN installation, settings, and stored data with the selected restore point.
+
+#### Through the web UI
+
+1. Open the version modal and select **Restore**.
+2. Select <kbd>Check Backups</kbd>.
+3. Choose any automatic or manual archive.
+4. Select <kbd>Restore Selected</kbd> and confirm the exact archive.
+5. Leave the modal open while validation, activation, public refresh, hook setup, and node synchronization run.
+6. Select <kbd>Refresh UI</kbd> when restore completes. An older restore point may load an older version of the interface.
+
+The same tab can delete the selected archive. **Delete All Backups** requires entering `DELETE ALL` and permanently wipes the contents of `/jffs/addons/mervlan_backups`. If it deletes the automatic archive referenced by Undo Update, that volatile shortcut is cleared. The separate Undo Restore file in `/tmp` is not part of persistent delete-all.
+
+#### Through SSH
 
 1. Connect to the main router over SSH.
 2. Open the MerVLAN directory:
 
    `cd /jffs/addons/mervlan`
 
-3. Start restore mode:
+3. Start the interactive restore-management menu:
 
    `sh functions/update_mervlan.sh restore`
 
-4. Select one of the available backups. The newest backup is listed first.
-5. Review the selected backup and enter `y` to confirm.
-6. When completed, MerVLAN displays the version that was replaced and the version restored.
+4. List the backups and select the restore operation.
+5. Choose any automatic or manual archive.
+6. Review the selected backup and enter `y` to confirm.
+7. When completed, MerVLAN displays the version that was replaced and the version restored.
+
+For scripting, use the exact archive name:
+
+`sh functions/update_mervlan.sh restore mervlan.manual.backup.20260718-151412.before-vlan-test.tar.gz yes`
 
 > [!CAUTION]
 > A restore is a complete rollback, not a settings-only restore. Changes made after the selected backup was created will be replaced.
 
-### Post-Restore Steps
+### Restore Safety and Completion
 
-A restore replaces the MerVLAN addon directory with the selected backup, but it does not automatically refresh the public web files, rebuild the hardware profile, reinstall service hooks, restore the active boot state, or synchronize configured nodes. The following steps complete those tasks after the restore.
+Restore now performs the complete lifecycle automatically. It validates archive paths and required files before touching the active installation, checks staging and temporary-undo capacity, extracts on the same filesystem, quiesces the main unit and nodes, removes the current version's template injections, moves the current tree aside, activates the staged tree, comprehensively reprovisions public/runtime publication without deleting logs, restores stored databases, rebuilds the hardware profile, and reapplies hooks according to the restored `BOOT_ENABLED` state. For nodes listed in the selected backup, restore removes stale remote addon files, synchronizes the restored node runtime and settings, pushes the restored shared MAC Shield database and overrides, always reinstalls the configured-node baseline, and then applies the backed-up enabled or disabled boot state. Final runtime reports are verified and mismatches retry once. Essential activation, public-provisioning, main-hook, or main-verification failures move the original installation back and rebuild its public/node projection; named node failures remain explicit warnings. After success, the displaced installation is compressed into one root-only temporary Undo Restore file and does not consume or rotate an automatic backup slot. The success message explains that the file is lost on reboot. A successful update similarly publishes an Undo Update shortcut, but reuses its automatic pre-update archive instead of duplicating it in RAM.
 
-Run all commands on the main router from the MerVLAN base directory:
+Node or hardware-probe failures are reported as warnings so a valid local restore is not discarded solely because an optional remote step failed. Review the CLI log whenever the modal reports partial completion.
 
-`cd /jffs/addons/mervlan`
+### Manual Backup and Deletion Commands
 
-#### 1. Refresh the Public Web Files and Hardware Profile
+| Command | What it does |
+| --- | --- |
+| <pre>`sh functions/update_mervlan.sh backup`</pre> | Open the interactive backup-management menu. |
+| <pre>`sh functions/update_mervlan.sh backup list`</pre> | Print all automatic and manual backups. Add `--json` for machine-readable output. |
+| <pre>`sh functions/update_mervlan.sh backup create TAG`</pre> | Create a manual archive after confirmation. Add `yes` to use the argument-only path. |
+| <pre>`sh functions/update_mervlan.sh backup delete ARCHIVE`</pre> | Delete one selected archive after confirmation. Add `yes` for the argument-only path. |
+| <pre>`sh functions/update_mervlan.sh backup delete-all`</pre> | Delete every backup after confirmation. Add `yes` only when intentional. |
+| <pre>`sh functions/update_mervlan.sh undo restore yes`</pre> | Undo the last successful restore while its temporary file remains available. |
+| <pre>`sh functions/update_mervlan.sh undo update yes`</pre> | Undo the last successful update while its temporary marker and referenced automatic archive remain available. |
 
-`sh uninstall.sh && sh install.sh && sh functions/hw_probe.sh`
-
-#### 2. Reinstall the Main Router Service Hooks
-
-`sh functions/mervlan_boot.sh setupdisable && sh functions/mervlan_boot.sh setupenable`
-
-#### 3. Re-enable MerVLAN at Boot
-
-Run this only when you want MerVLAN to apply the configured VLANs automatically after the router starts:
-
-`sh functions/mervlan_boot.sh disable && sh functions/mervlan_boot.sh enable`
-
-#### 4. Synchronize and Re-enable Configured Nodes
-
-Run these commands only when remote AiMesh or AP nodes are configured:
-
-`sh functions/sync_nodes.sh`
-
-`sh functions/mervlan_boot.sh nodedisable && sh functions/mervlan_boot.sh nodeenable`
-
-#### 5. Verify the Restored Installation
-
-`sh functions/mervlan_boot.sh status`
-
-Refresh the browser after completing these steps to load the restored web interface.
-
----
-
-### Combined Commands
-
-#### Without Configured Nodes
-
-Refresh the installation, rebuild the hardware profile, reinstall the service hooks, and enable MerVLAN at boot:
-
-`sh uninstall.sh && sh install.sh && sh functions/hw_probe.sh && sh functions/mervlan_boot.sh setupdisable && sh functions/mervlan_boot.sh setupenable && sh functions/mervlan_boot.sh disable && sh functions/mervlan_boot.sh enable`
-
-#### With Configured Nodes
-
-Also synchronize the restored files to configured nodes and reinstall their service hooks:
-
-`sh uninstall.sh && sh install.sh && sh functions/hw_probe.sh && sh functions/mervlan_boot.sh setupdisable && sh functions/mervlan_boot.sh setupenable && sh functions/mervlan_boot.sh disable && sh functions/mervlan_boot.sh enable && sh functions/sync_nodes.sh && sh functions/mervlan_boot.sh nodedisable && sh functions/mervlan_boot.sh nodeenable`
-
-> [!NOTE]
-> The combined commands enable MerVLAN at boot. To leave automatic boot application disabled, remove `&& sh functions/mervlan_boot.sh enable` from the command.
+The restore menu also exposes selected deletion and delete-all. All identifiers are resolved against the backup inventory; arbitrary paths are rejected.
 
 <br>
 <br>
@@ -790,7 +789,11 @@ These commands are useful when working over SSH on the main router. Most users s
 | <pre>`sh functions/update_mervlan.sh`</pre> | Update from the main public beta channel. |
 | <pre>`sh functions/update_mervlan.sh dev`</pre> | Update from the development channel. |
 | <pre>`sh functions/update_mervlan.sh update dev`</pre> | Explicit development-channel update. Same intent as the UI Development channel. |
-| <pre>`sh functions/update_mervlan.sh restore`</pre> | Open the restore flow and select one of the local MerVLAN backups. |
+| <pre>`sh functions/update_mervlan.sh backup`</pre> | Open interactive backup creation and deletion. |
+| <pre>`sh functions/update_mervlan.sh restore`</pre> | Open interactive restore and backup maintenance. |
+| <pre>`sh functions/update_mervlan.sh backup list --json`</pre> | Print the automatic/manual backup inventory as JSON. |
+| <pre>`sh functions/update_mervlan.sh undo restore yes`</pre> | Undo the last successful restore while its temporary source remains available. |
+| <pre>`sh functions/update_mervlan.sh undo update yes`</pre> | Undo the last successful update while its temporary marker remains available. |
 | <pre>`sh functions/update_mervlan.sh BRANCH`</pre> | Replace `BRANCH` with the name of a custom branch for development or test installations.<br>For example, run `sh functions/update_mervlan.sh dev-test9` to update MerVLAN from the `dev-test9` branch. |
 | <pre>`sh functions/update_mervlan.sh refs/tags/v0.53.15`</pre> | Install an explicit tagged release. Replace the example tag with the required release tag. |
 

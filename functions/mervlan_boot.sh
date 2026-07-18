@@ -797,15 +797,18 @@ case "$ACTION" in
         warn -c vlan,cli "service-event-handler missing at $SERVICE_EVENT_HANDLER"
       fi
 
-      # Install node service-event wrapper (shared template)
+      # Install the configured-node baseline from the currently active target
+      # templates.  BOOT_ENABLED remains owned by the later enable/disable
+      # action; nodeenable only establishes service-event and addon mounting.
       inject_template "$TEMPLATE_SERVICE_EVENT" "$SERVICE_EVENT_WRAPPER" || { error -c vlan,cli "Failed to install node service-event"; exit 1; }
+      inject_template "$TEMPLATE_SERVICES_ADDON" "$SERVICES_START" || { error -c vlan,cli "Failed to install node addon boot entry"; exit 1; }
       chmod 755 "$SERVICE_EVENT_WRAPPER" 2>/dev/null || \
         warn -c vlan,cli "Could not chmod 755 $SERVICE_EVENT_WRAPPER"
       if [ -n "$BOOT_SCRIPT" ]; then
         chmod 755 "$BOOT_SCRIPT" 2>/dev/null || warn -c vlan,cli "Could not chmod 755 $BOOT_SCRIPT"
       fi
 
-      info -c vlan,cli "Installed node service-event wrapper with shared handler (MERV_BASE=$MERV_BASE)"
+      info -c vlan,cli "Installed node service-event and addon boot templates (MERV_BASE=$MERV_BASE)"
       exit 0
     fi
 
@@ -854,10 +857,14 @@ case "$ACTION" in
       else
         info -c vlan,cli "service-event not present on node; nothing to disable"
       fi
-      # Remove addon boot entry from services-start if present
+      # Remove both node-owned services-start blocks.  disable normally removes
+      # the active manager block first, but nodedisable is deliberately complete
+      # and idempotent when called on its own during recovery/uninstall.
       if [ -f "$SERVICES_START" ]; then
         remove_template_block "$TEMPLATE_SERVICES" "$SERVICES_START" \
           || warn -c vlan,cli "Failed to remove services-start block"
+        remove_template_block "$TEMPLATE_SERVICES_ADDON" "$SERVICES_START" \
+          || warn -c vlan,cli "Failed to remove addon boot block"
       fi
       # Tear down MERV_QT quarantine chain on this node
       if type ebtables >/dev/null 2>&1; then

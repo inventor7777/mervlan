@@ -1148,14 +1148,81 @@ create_link() {
         return 1
     }
 }
-# create_logs — Initialize log files with safe permissions
-# Explanation: Truncates/creates CLI and VLAN manager logs and sets modes
+# create_logs [reset|preserve] — Initialize log files with safe permissions.
+# Normal installs retain their historical reset behavior.  Internal reinstall
+# runs create-if-missing so update/restore output survives public reprovisioning.
 create_logs() {
-    : > "$TMP_DIR/logs/cli_output.log"    || { printf 'ERROR: Failed to init cli_output.log\n' >&2; return 1; }
-    : > "$TMP_DIR/logs/vlan_manager.log"       || { printf 'ERROR: Failed to init vlan_manager.log\n' >&2; return 1; }
+    local policy="${1:-reset}" log_file
+    case "$policy" in reset|preserve) ;; *) return 1 ;; esac
+
+    for log_file in \
+        "$TMP_DIR/logs/cli_output.log" \
+        "$TMP_DIR/logs/vlan_manager.log"
+    do
+        if [ "$policy" = "reset" ] || [ ! -f "$log_file" ]; then
+            : > "$log_file" || { printf 'ERROR: Failed to init %s\n' "${log_file##*/}" >&2; return 1; }
+        fi
+    done
 
     chmod 755 "$TMP_DIR" "$TMP_DIR/logs"
     chmod 644 "$TMP_DIR/logs/cli_output.log" "$TMP_DIR/logs/vlan_manager.log"
+}
+
+# Reinstall is used transactionally by update/restore, so its caller needs a
+# reliable non-zero result when the complete public/runtime projection was not
+# rebuilt.  Normal installs retain their historical best-effort behavior.
+verify_reinstall_projection() {
+    local failed=0 required
+    local verify_www_user_root="${MERV_REINSTALL_WWW_USER_ROOT:-/www/user}"
+    local verify_menu_tree="${MERV_REINSTALL_MENU_TREE:-/tmp/menuTree.js}"
+    for required in \
+        "$PUBLIC_DIR/index.html" \
+        "$PUBLIC_DIR/vlan_index_style.css" \
+        "$PUBLIC_DIR/vlan_form_style.css" \
+        "$PUBLIC_DIR/help.html" \
+        "$PUBLIC_DIR/view_logs.html" \
+        "$PUBLIC_DIR/docs/HELP.json" \
+        "$PUBLIC_DIR/vendor/marked.umd.js" \
+        "$PUBLIC_DIR/vendor/github-markdown-dark.css" \
+        "$PUBLIC_DIR/vendor/THIRD_PARTY_LICENSES.json" \
+        "$PUBLIC_DIR/diagrams/topology-1_local.svg" \
+        "$PUBLIC_DIR/diagrams/topology-2_aimesh.svg" \
+        "$PUBLIC_DIR/diagrams/topology-3_standalone-ap.svg" \
+        "$PUBLIC_DIR/diagrams/topology-4_node-to-main.svg" \
+        "$TMP_DIR/logs/cli_output.log" \
+        "$TMP_DIR/logs/vlan_manager.log"
+    do
+        if [ ! -f "$required" ]; then
+            printf '[install] ERROR: Reinstall projection missing %s\n' "$required" >&2
+            failed=1
+        fi
+    done
+
+    for required in \
+        "$PUBLIC_DIR/settings/settings.json" \
+        "$PUBLIC_DIR/tmp/logs/cli_output.json" \
+        "$PUBLIC_DIR/tmp/logs/vlan_manager.json" \
+        "$PUBLIC_DIR/tmp/results/vlan_clients.json"
+    do
+        if [ ! -L "$required" ]; then
+            printf '[install] ERROR: Reinstall projection missing symlink %s\n' "$required" >&2
+            failed=1
+        fi
+    done
+
+    if [ -z "${am_webui_page:-}" ] || [ ! -f "$verify_www_user_root/$am_webui_page" ]; then
+        printf '[install] ERROR: Reinstall projection missing registered ASP page\n' >&2
+        failed=1
+    fi
+    if [ ! -f "$verify_menu_tree" ] || ! grep -q 'tabName: "MerVLAN"' "$verify_menu_tree" 2>/dev/null; then
+        printf '[install] ERROR: Reinstall projection missing MerVLAN menu registration\n' >&2
+        failed=1
+    fi
+    if [ -f "$MERV_BASE/.ssh/vlan_manager.pub" ] && [ ! -f "$PUBLIC_DIR/.ssh/vlan_manager.json" ]; then
+        printf '[install] ERROR: Reinstall projection missing SSH public-key publication\n' >&2
+        failed=1
+    fi
+    [ "$failed" = "0" ]
 }
 
 # ========================================================================== #
@@ -1196,10 +1263,16 @@ create_logs() {
 #     - Update SSH credentials only
 #     - Exits after updating settings.json
 #
+#   ./install.sh reinstall
+#     - Rebuilds the complete runtime/public installation from existing files
+#     - Preserves existing logs and leaves hook/node reconciliation to caller
+#
 # ========================================================================== #
 
 # Handle "full", "tarball", "download", and "credentials" install modes
 MODE="${1:-}"
+INSTALL_LOG_POLICY="reset"
+[ "$MODE" = "reinstall" ] && INSTALL_LOG_POLICY="preserve"
 
 # Handle special modes before normal install flow
 case "$MODE" in
@@ -1300,7 +1373,7 @@ cp "$ADDON_DIR/$ADDON/mervlan.asp" "/www/user/$am_webui_page"
 # 3a. Create Project Dirs
 # Ensure runtime temp/log directories exist before exposing UI assets
 echo "[install] Creating runtime directories and logs"
-if create_dirs && create_logs; then
+if create_dirs && create_logs "$INSTALL_LOG_POLICY"; then
     logger -t "$ADDON" "Logs & folder structure complete!"
 else
     logger -t "$ADDON" "ERROR: Failed to initialize directories or logs"
@@ -1405,42 +1478,56 @@ echo "[install] Web UI tab installed: LAN -> MerVLAN ($am_webui_page)"
 # POST-INSTALL HOOKS — Ensure service scripts reachable and sync nodes       #
 # ========================================================================== #
 
-# Ensure boot/service-event hooks are present even on non-full installs
-echo "[install] Installing service-event hooks"
-if [ -x "$MERV_BASE/functions/mervlan_boot.sh" ]; then
-    if MERV_SKIP_NODE_SYNC=1 sh "$MERV_BASE/functions/mervlan_boot.sh" setupenable >/dev/null 2>&1; then
-        logger -t "$ADDON" "addon setupenable completed (post-install)"
-        echo "[install] Service-event hooks installed"
-    else
-        logger -t "$ADDON" "WARNING: setupenable failed during post-install"
-        echo "[install] WARNING: Service-event hook installation failed" >&2
+# Reinstall is an internal public/runtime reprovisioning mode.  Update/restore
+# deliberately remove old-version injections before the swap and reinstall the
+# target-version injections afterward, so this phase must not create a second,
+# hidden reconciliation cycle.
+if [ "$MODE" = "reinstall" ]; then
+    if ! verify_reinstall_projection; then
+        logger -t "$ADDON" "ERROR: Reinstall public/runtime projection verification failed"
+        echo "[install] ERROR: Reinstall provisioning is incomplete" >&2
+        exit 1
     fi
+    logger -t "$ADDON" "Reinstall mode: public/runtime provisioning complete; hook reconciliation deferred to caller"
+    echo "[install] Reinstall provisioning complete; hooks preserved for caller reconciliation"
 else
-    logger -t "$ADDON" "WARNING: mervlan_boot.sh not executable; skipping post-install setupenable"
-    echo "[install] WARNING: mervlan_boot.sh not executable" >&2
-fi
-
-# If nodes are configured and SSH keys are ready, propagate nodeenable now
-if has_configured_nodes && ssh_keys_effectively_installed; then
-    if [ -x "$BOOT_SCRIPT" ]; then
-        echo "[install] Propagating setup to $(count_configured_nodes) configured node(s)"
-        logger -t "$ADDON" "Propagating nodeenable to configured nodes"
-        if sh "$BOOT_SCRIPT" nodeenable >/dev/null 2>&1; then
-            logger -t "$ADDON" "nodeenable completed successfully"
-            echo "[install] Node setup completed successfully"
+    # Ensure boot/service-event hooks are present even on non-full installs
+    echo "[install] Installing service-event hooks"
+    if [ -x "$MERV_BASE/functions/mervlan_boot.sh" ]; then
+        if MERV_SKIP_NODE_SYNC=1 sh "$MERV_BASE/functions/mervlan_boot.sh" setupenable >/dev/null 2>&1; then
+            logger -t "$ADDON" "addon setupenable completed (post-install)"
+            echo "[install] Service-event hooks installed"
         else
-            logger -t "$ADDON" "WARNING: nodeenable encountered errors"
-            echo "[install] WARNING: Some node operations may have failed" >&2
+            logger -t "$ADDON" "WARNING: setupenable failed during post-install"
+            echo "[install] WARNING: Service-event hook installation failed" >&2
         fi
     else
-        logger -t "$ADDON" "WARNING: mervlan_boot.sh not executable; skipping nodeenable"
-        echo "[install] WARNING: Cannot propagate to nodes (mervlan_boot.sh not executable)" >&2
+        logger -t "$ADDON" "WARNING: mervlan_boot.sh not executable; skipping post-install setupenable"
+        echo "[install] WARNING: mervlan_boot.sh not executable" >&2
     fi
-else
-    if has_configured_nodes; then
-        echo "[install] Nodes configured but SSH keys not ready; run SSH key setup to enable nodes"
+
+    # If nodes are configured and SSH keys are ready, propagate nodeenable now
+    if has_configured_nodes && ssh_keys_effectively_installed; then
+        if [ -x "$BOOT_SCRIPT" ]; then
+            echo "[install] Propagating setup to $(count_configured_nodes) configured node(s)"
+            logger -t "$ADDON" "Propagating nodeenable to configured nodes"
+            if sh "$BOOT_SCRIPT" nodeenable >/dev/null 2>&1; then
+                logger -t "$ADDON" "nodeenable completed successfully"
+                echo "[install] Node setup completed successfully"
+            else
+                logger -t "$ADDON" "WARNING: nodeenable encountered errors"
+                echo "[install] WARNING: Some node operations may have failed" >&2
+            fi
+        else
+            logger -t "$ADDON" "WARNING: mervlan_boot.sh not executable; skipping nodeenable"
+            echo "[install] WARNING: Cannot propagate to nodes (mervlan_boot.sh not executable)" >&2
+        fi
+    else
+        if has_configured_nodes; then
+            echo "[install] Nodes configured but SSH keys not ready; run SSH key setup to enable nodes"
+        fi
+        logger -t "$ADDON" "Nodeenable skipped (no nodes configured or SSH keys not installed)"
     fi
-    logger -t "$ADDON" "Nodeenable skipped (no nodes configured or SSH keys not installed)"
 fi
 
 echo "[install] Installation complete!"
