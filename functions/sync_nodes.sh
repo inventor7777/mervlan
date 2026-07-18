@@ -146,6 +146,7 @@ settings/lib_ssh.sh
 settings/lib_ssid_filter.sh
 settings/lib_stp.sh
 settings/lib_mervqt.sh
+settings/lib_action_ack.sh
 settings/lib_radio.sh
 settings/mac_shield_snapshot.sh
 settings/lib_br0_guard.sh
@@ -183,6 +184,7 @@ settings/lib_ssh.sh
 settings/lib_ssid_filter.sh 
 settings/lib_stp.sh
 settings/lib_mervqt.sh
+settings/lib_action_ack.sh
 settings/lib_radio.sh
 settings/mac_shield_snapshot.sh
 settings/lib_br0_guard.sh
