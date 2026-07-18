@@ -4654,11 +4654,14 @@ function triggerAction(actionScriptName, button, description) {
       let random = '';
       try {
         if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
-          random = Array.from(window.crypto.getRandomValues(new Uint32Array(2))).map(n => n.toString(36)).join('');
+          random = window.crypto.getRandomValues(new Uint32Array(1))[0].toString(36);
         }
       } catch (_) {}
       if (!random) random = Math.random().toString(36).slice(2);
-      return `merv-${Date.now()}-${random}`;
+      // The token is hex-encoded into the ASUS service-event name. Keep it
+      // compact so the complete verified action remains below firmware field
+      // limits and the backend acknowledges the exact token being polled.
+      return `m${Date.now().toString(36)}${random.slice(0, 6)}`;
     }
 
     async function waitForVerifiedActionResult(requestToken, actionName, expectedResult, timeoutMs) {
@@ -4902,9 +4905,9 @@ function triggerAction(actionScriptName, button, description) {
         updatePauseIndicator();
         updateExperimentalVisibility();
         updateBootStatusLineFromCache();
-        setServiceTransactionStatus('Settings applied.', 'success');
         setServiceSettingsBusy(false);
-        closeServiceSettingsModal();
+        markSvcSettingsDirty();
+        setServiceTransactionStatus('Settings Saved!', 'success');
       } catch (error) {
         try { await refreshSettingsCacheFromDisk(); } catch (_) {}
         if (CURRENT_SETTINGS_CACHE) {

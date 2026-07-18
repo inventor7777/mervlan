@@ -77,6 +77,24 @@ boot_action_ack_complete() {
       ;;
   esac
 }
+
+persist_boot_enabled_state() {
+  _pbes_value="$1"
+  json_set_flag "BOOT_ENABLED" "$_pbes_value" "$SETTINGS_FILE" >/dev/null 2>&1 || return 1
+
+  # Current installs expose SETTINGS_FILE through a public symlink. Preserve
+  # compatibility with older installs where the public path is a regular copy,
+  # otherwise the Settings modal keeps reading a stale BOOT_ENABLED value.
+  if [ -f "${PUBLIC_SETTINGS_FILE:-}" ] && [ ! -L "$PUBLIC_SETTINGS_FILE" ] && \
+     ! cmp -s "$SETTINGS_FILE" "$PUBLIC_SETTINGS_FILE" 2>/dev/null; then
+    if cp "$SETTINGS_FILE" "$PUBLIC_SETTINGS_FILE" 2>/dev/null; then
+      chmod 644 "$PUBLIC_SETTINGS_FILE" 2>/dev/null || :
+    else
+      warn -c vlan,cli "Failed to refresh the public settings copy after changing BOOT_ENABLED"
+    fi
+  fi
+  return 0
+}
 # Marker format and lock helper
 MARKER_PREFIX="### >>> MERVLAN START:"
 MARKER_SUFFIX="### <<< MERVLAN END:"
@@ -600,7 +618,7 @@ case "$ACTION" in
     info -c vlan,cli "Installed services-start with MERV_BASE=$MERV_BASE (service-event managed at setup)"
 
     # Persist boot enabled state to settings.json
-    if ! json_set_flag "BOOT_ENABLED" "1" "$SETTINGS_FILE" >/dev/null 2>&1; then
+    if ! persist_boot_enabled_state "1"; then
       warn -c vlan,cli "Failed to persist BOOT_ENABLED=1"
       _boot_partial=1
       _boot_warnings='["BOOT_ENABLED could not be persisted"]'
@@ -619,8 +637,7 @@ case "$ACTION" in
 
     # Propagate enable action to all configured nodes via SSH
     if ! handle_nodes_via_ssh "enable"; then
-      # Local boot enable succeeded. Node propagation has historically been
-      # best-effort and must not make the local settings transaction fail.
+      _boot_partial=1
       _boot_warnings='["Boot enable succeeded locally; one or more nodes could not be reached"]'
     fi
     if [ "$_boot_partial" = "1" ]; then
@@ -645,7 +662,7 @@ case "$ACTION" in
       fi
     fi
     # Persist boot disabled state to settings.json
-    if ! json_set_flag "BOOT_ENABLED" "0" "$SETTINGS_FILE" >/dev/null 2>&1; then
+    if ! persist_boot_enabled_state "0"; then
       warn -c vlan,cli "Failed to persist BOOT_ENABLED=0"
       _boot_partial=1
       _boot_warnings='["BOOT_ENABLED could not be persisted"]'
@@ -667,7 +684,7 @@ case "$ACTION" in
 
     # Propagate disable action to all configured nodes via SSH
     if ! handle_nodes_via_ssh "disable"; then
-      # Local boot disable succeeded. Keep node propagation as best-effort.
+      _boot_partial=1
       _boot_warnings='["Boot disable succeeded locally; one or more nodes could not be reached"]'
     fi
     if [ "$_boot_partial" = "1" ]; then

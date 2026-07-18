@@ -295,6 +295,17 @@ For structured beta testing and discussion, see the SNBForums thread and Discord
 
 See the **[`changelog.txt`](changelog.txt)** in this repository for detailed version history and notes.
 
+### Current development fixes (v0.53.21-dev)
+
+- Apply-on-boot actions use compact verified-action tokens so ASUS service-event
+  handling cannot truncate the correlation value before completion is reported.
+- `BOOT_ENABLED` updates refresh legacy regular-file web settings copies while
+  retaining the persistent-settings symlink as the preferred source of truth.
+- The Settings modal remains open after a successful save, shows a green
+  `Settings Saved!` confirmation, and re-enables interaction.
+- Boot propagation failures on configured nodes are reported as partial success
+  while preserving the successfully applied state on the main router.
+
 ---
 
 <h2 id="help-wanted">Help wanted: LAN/ETH port mapping (device support) <sub><sup><a href="#index">. . . [back to index]</a></sup></sub></h2>
