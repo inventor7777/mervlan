@@ -27,9 +27,10 @@ New: Integrated backup and transactional restore management
 - Added atomic backup_inventory.json and maintenance_result.json publication,
   request-token correlation, independent retention pools, and strict encoded
   service-event validation for tags and archive identifiers.
-- The Restore page now always reports persistent JFFS backup usage/available
-  space and temporary undo usage/available space. Backup, update, restore, and
-  undo paths preflight the destination filesystem with a safety reserve.
+- The Restore page now reports the full MerVLAN-managed JFFS footprint and its
+  RAM-backed /tmp plus published /www footprint. It verifies whether /tmp and
+  /www share a filesystem before combining them, avoids following public links,
+  and retains operation-specific capacity preflights with a safety reserve.
 - Added one reboot-volatile Undo Restore archive and one reboot-volatile Undo
   Update shortcut. Restore undo no longer consumes automatic rotation; update
   undo reuses the existing automatic pre-update archive instead of duplicating
@@ -69,6 +70,14 @@ New: Integrated backup and transactional restore management
 - Restore no longer creates a horizontal scrollbar, and its modal/inventory
   scrollbars now match the CLI and Active VLAN Clients theme. APMO now expands
   the addon/modal naturally instead of forcing an unnecessary internal scroller.
+- The Restore modal now derives its maximum height from the visible addon panel
+  and balances its upper/lower spacing. Storage figures are right-aligned,
+  backup counts align with Check Backups, and redundant help/status copy is
+  compact enough to avoid unnecessary wrapping.
+- Full installs now use and remove an installer-owned extraction workspace.
+  Explicit download mode still retains its tarball, tarball installation keeps
+  that source archive while cleaning extraction, and caller-provided TMP_DIR is
+  no longer overwritten by the runtime directory default.
 
 Documentation:
 - Updated README.md and docs/HELP.md for the Restore tab, manual backup naming

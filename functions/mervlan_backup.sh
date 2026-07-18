@@ -17,10 +17,12 @@
 cd /tmp 2>/dev/null || cd / || :
 [ -f /usr/sbin/helper.sh ] && . /usr/sbin/helper.sh
 
-readonly MB_TMP_ROOT="${TMPDIR:-/tmp/mervlan_tmp}"
+readonly MB_TMP_ROOT="${MERVLAN_TMP_ROOT_OVERRIDE:-${TMPDIR:-/tmp/mervlan_tmp}}"
 readonly MB_WORK_ROOT="$MB_TMP_ROOT/backup_manager.$$"
 readonly MB_BACKUP_ROOT="${MERVLAN_BACKUP_DIR_OVERRIDE:-${MERV_BASE%/*}/mervlan_backups}"
-readonly MB_PUBLIC_RESULTS="${MERVLAN_PUBLIC_RESULTS_OVERRIDE:-${PUBLIC_MERV_BASE:-/www/user/mervlan}/tmp/results}"
+readonly MB_PUBLIC_ROOT="${MERVLAN_PUBLIC_ROOT_OVERRIDE:-${PUBLIC_MERV_BASE:-/www/user/mervlan}}"
+readonly MB_WWW_USER_ROOT="${MERVLAN_WWW_USER_ROOT_OVERRIDE:-/www/user}"
+readonly MB_PUBLIC_RESULTS="${MERVLAN_PUBLIC_RESULTS_OVERRIDE:-$MB_PUBLIC_ROOT/tmp/results}"
 readonly MB_INVENTORY_FILE="$MB_PUBLIC_RESULTS/backup_inventory.json"
 readonly MB_RESULT_FILE="$MB_PUBLIC_RESULTS/maintenance_result.json"
 readonly MB_LOCK="${MERVLAN_MAINTENANCE_LOCK_OVERRIDE:-${LOCKDIR:-$MB_TMP_ROOT/locks}/mervlan_maintenance.lock}"
@@ -82,6 +84,91 @@ mb_fs_stats_kb() {
     [ -n "$_mb_stats_path" ] || _mb_stats_path=/
   done
   df -Pk "$_mb_stats_path" 2>/dev/null | awk 'NR == 2 { print $2 "|" $4 }'
+}
+
+mb_fs_id() {
+  _mb_id_path="$1"
+  while [ ! -e "$_mb_id_path" ] && [ "$_mb_id_path" != "/" ]; do
+    _mb_id_path=${_mb_id_path%/*}
+    [ -n "$_mb_id_path" ] || _mb_id_path=/
+  done
+  df -Pk "$_mb_id_path" 2>/dev/null | awk 'NR == 2 { print $1 }'
+}
+
+mb_number_or_zero() {
+  case "$1" in ''|*[!0-9]*) printf '0' ;; *) printf '%s' "$1" ;; esac
+}
+
+mb_public_asp_path() {
+  _mb_asp="${MERVLAN_PUBLIC_ASP_OVERRIDE:-}"
+  if [ -z "$_mb_asp" ] && type am_settings_get >/dev/null 2>&1; then
+    _mb_page=$(am_settings_get mervlan_page 2>/dev/null)
+    _mb_page_number=${_mb_page#user}
+    _mb_page_number=${_mb_page_number%.asp}
+    case "$_mb_page" in
+      user*.asp)
+        case "$_mb_page_number" in ''|*[!0-9]*) : ;; *) _mb_asp="$MB_WWW_USER_ROOT/$_mb_page" ;; esac
+        ;;
+    esac
+  fi
+  [ -n "$_mb_asp" ] && [ -f "$_mb_asp" ] && printf '%s' "$_mb_asp"
+}
+
+# Collect broad informational storage totals without changing the exact
+# destination-specific preflight checks used by backup, update, and restore.
+# Public links are measured without -L, so JFFS settings and /tmp logs are not
+# followed and counted a second time.
+mb_collect_managed_storage() {
+  _mb_jffs_used=$(mb_path_size_kb "$MERV_BASE")
+  case "$MB_BACKUP_ROOT/" in
+    "$MERV_BASE/"*) ;;
+    *) _mb_jffs_used=$((_mb_jffs_used + $(mb_path_size_kb "$MB_BACKUP_ROOT"))) ;;
+  esac
+  for _mb_residue in \
+    "${MERV_BASE%/*}"/.mervlan.restore-stage.* \
+    "${MERV_BASE%/*}"/.mervlan.restore-old.*
+  do
+    [ -e "$_mb_residue" ] || continue
+    _mb_jffs_used=$((_mb_jffs_used + $(mb_path_size_kb "$_mb_residue")))
+  done
+
+  _mb_tmp_used=$(mb_path_size_kb "$MB_TMP_ROOT")
+  _mb_www_used=$(mb_path_size_kb "$MB_PUBLIC_ROOT")
+  _mb_public_asp=$(mb_public_asp_path)
+  if [ -n "$_mb_public_asp" ]; then
+    case "$_mb_public_asp/" in
+      "$MB_PUBLIC_ROOT/"*) ;;
+      *) _mb_www_used=$((_mb_www_used + $(mb_path_size_kb "$_mb_public_asp"))) ;;
+    esac
+  fi
+
+  _mb_jffs_stats=$(mb_fs_stats_kb "$MERV_BASE")
+  MB_STORAGE_JFFS_TOTAL=$(mb_number_or_zero "${_mb_jffs_stats%%|*}")
+  MB_STORAGE_JFFS_AVAILABLE=$(mb_number_or_zero "${_mb_jffs_stats#*|}")
+  MB_STORAGE_JFFS_USED=$(mb_number_or_zero "$_mb_jffs_used")
+
+  _mb_tmp_stats=$(mb_fs_stats_kb "$MB_TMP_ROOT")
+  MB_STORAGE_TMP_TOTAL=$(mb_number_or_zero "${_mb_tmp_stats%%|*}")
+  MB_STORAGE_TMP_AVAILABLE=$(mb_number_or_zero "${_mb_tmp_stats#*|}")
+  MB_STORAGE_TMP_USED=$(mb_number_or_zero "$_mb_tmp_used")
+
+  _mb_www_stats=$(mb_fs_stats_kb "$MB_PUBLIC_ROOT")
+  MB_STORAGE_WWW_TOTAL=$(mb_number_or_zero "${_mb_www_stats%%|*}")
+  MB_STORAGE_WWW_AVAILABLE=$(mb_number_or_zero "${_mb_www_stats#*|}")
+  MB_STORAGE_WWW_USED=$(mb_number_or_zero "$_mb_www_used")
+
+  MB_STORAGE_RAM_COMBINED=false
+  MB_STORAGE_RAM_USED=0
+  MB_STORAGE_RAM_TOTAL=0
+  MB_STORAGE_RAM_AVAILABLE=0
+  _mb_tmp_fs=$(mb_fs_id "$MB_TMP_ROOT")
+  _mb_www_fs=$(mb_fs_id "$MB_PUBLIC_ROOT")
+  if [ -n "$_mb_tmp_fs" ] && [ "$_mb_tmp_fs" = "$_mb_www_fs" ]; then
+    MB_STORAGE_RAM_COMBINED=true
+    MB_STORAGE_RAM_USED=$((MB_STORAGE_TMP_USED + MB_STORAGE_WWW_USED))
+    MB_STORAGE_RAM_TOTAL=$MB_STORAGE_TMP_TOTAL
+    MB_STORAGE_RAM_AVAILABLE=$MB_STORAGE_TMP_AVAILABLE
+  fi
 }
 
 mb_require_space_kb() {
@@ -321,6 +408,7 @@ mb_write_inventory() {
   done
   _mb_persistent_used=$(mb_path_size_kb "$MB_BACKUP_ROOT")
   _mb_temporary_used=$(mb_path_size_kb "$MB_UNDO_ROOT")
+  mb_collect_managed_storage
   _mb_undo_restore_available=false
   _mb_undo_restore_size=0
   _mb_undo_restore_version=unknown
@@ -349,9 +437,15 @@ mb_write_inventory() {
   fi
   printf '{"generated":%s,"automatic_count":%s,"automatic_limit":%s,"manual_count":%s,"manual_limit":%s,' \
     "$(date +%s 2>/dev/null || echo 0)" "$_mb_auto" "$MB_AUTO_LIMIT" "$_mb_manual" "$MB_MANUAL_LIMIT" > "$_mb_tmp" || return 1
-  printf '"storage":{"persistent":{"used_bytes":%s,"available_bytes":%s,"total_bytes":%s},"temporary":{"used_bytes":%s,"available_bytes":%s,"total_bytes":%s}},' \
+  printf '"storage":{"persistent":{"used_bytes":%s,"available_bytes":%s,"total_bytes":%s},"temporary":{"used_bytes":%s,"available_bytes":%s,"total_bytes":%s},' \
     "$((_mb_persistent_used * 1024))" "$((_mb_persistent_available * 1024))" "$((_mb_persistent_total * 1024))" \
     "$((_mb_temporary_used * 1024))" "$((_mb_temporary_available * 1024))" "$((_mb_temporary_total * 1024))" >> "$_mb_tmp"
+  printf '"managed":{"jffs":{"used_bytes":%s,"available_bytes":%s,"total_bytes":%s},"tmp":{"used_bytes":%s,"available_bytes":%s,"total_bytes":%s},' \
+    "$((MB_STORAGE_JFFS_USED * 1024))" "$((MB_STORAGE_JFFS_AVAILABLE * 1024))" "$((MB_STORAGE_JFFS_TOTAL * 1024))" \
+    "$((MB_STORAGE_TMP_USED * 1024))" "$((MB_STORAGE_TMP_AVAILABLE * 1024))" "$((MB_STORAGE_TMP_TOTAL * 1024))" >> "$_mb_tmp"
+  printf '"www":{"used_bytes":%s,"available_bytes":%s,"total_bytes":%s},"ram":{"combined":%s,"used_bytes":%s,"available_bytes":%s,"total_bytes":%s}}},' \
+    "$((MB_STORAGE_WWW_USED * 1024))" "$((MB_STORAGE_WWW_AVAILABLE * 1024))" "$((MB_STORAGE_WWW_TOTAL * 1024))" \
+    "$MB_STORAGE_RAM_COMBINED" "$((MB_STORAGE_RAM_USED * 1024))" "$((MB_STORAGE_RAM_AVAILABLE * 1024))" "$((MB_STORAGE_RAM_TOTAL * 1024))" >> "$_mb_tmp"
   printf '"undo":{"restore":{"available":%s,"version":"%s","created":"%s","size_bytes":%s},"update":{"available":%s,"backup_id":"%s","version":"%s","created":"%s"}},"backups":[' \
     "$_mb_undo_restore_available" "$(mb_json_escape "$_mb_undo_restore_version")" "$(mb_json_escape "$_mb_undo_restore_created")" "$_mb_undo_restore_size" \
     "$_mb_undo_update_available" "$(mb_json_escape "$_mb_undo_update_id")" "$(mb_json_escape "$_mb_undo_update_version")" "$(mb_json_escape "$_mb_undo_update_created")" >> "$_mb_tmp"
@@ -394,12 +488,15 @@ mb_print_inventory() {
   [ "$_mb_index" -gt 0 ] || printf '  No backups found.\n'
   printf '\nAutomatic: %s/%s  Manual: %s/%s\n' \
     "$(mb_count_type automatic)" "$MB_AUTO_LIMIT" "$(mb_count_type manual)" "$MB_MANUAL_LIMIT"
-  _mb_persistent_stats=$(mb_fs_stats_kb "$MB_BACKUP_ROOT")
-  _mb_temporary_stats=$(mb_fs_stats_kb "$MB_UNDO_ROOT")
-  printf 'Persistent backup storage: %s KB used, %s KB available\n' \
-    "$(mb_path_size_kb "$MB_BACKUP_ROOT")" "${_mb_persistent_stats#*|}"
-  printf 'Temporary undo storage: %s KB used, %s KB available\n' \
-    "$(mb_path_size_kb "$MB_UNDO_ROOT")" "${_mb_temporary_stats#*|}"
+  mb_collect_managed_storage
+  printf 'MerVLAN storage use:\n'
+  printf '  JFFS: %s KB used, %s KB free\n' "$MB_STORAGE_JFFS_USED" "$MB_STORAGE_JFFS_AVAILABLE"
+  if [ "$MB_STORAGE_RAM_COMBINED" = "true" ]; then
+    printf '  RAM:  %s KB used, %s KB free\n' "$MB_STORAGE_RAM_USED" "$MB_STORAGE_RAM_AVAILABLE"
+  else
+    printf '  /tmp: %s KB used, %s KB free\n' "$MB_STORAGE_TMP_USED" "$MB_STORAGE_TMP_AVAILABLE"
+    printf '  /www: %s KB used, %s KB free\n' "$MB_STORAGE_WWW_USED" "$MB_STORAGE_WWW_AVAILABLE"
+  fi
   if [ -f "$MB_UNDO_RESTORE_ARCHIVE" ]; then
     printf '  Undo Restore available (temporary; lost on reboot).\n'
   fi

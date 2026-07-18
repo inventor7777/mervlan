@@ -668,7 +668,7 @@ The **Restore** tab is the backup-management frontend. Its controls are:
 
 | Control | What it does |
 | --- | --- |
-| <kbd>Check Backups</kbd> | Loads or refreshes the on-router inventory. The tab reports used and available space for persistent JFFS backups and temporary `/tmp` undo storage. |
+| <kbd>Check Backups</kbd> | Loads or refreshes the on-router inventory. The tab reports MerVLAN's complete managed JFFS footprint and its RAM-backed runtime/public footprint alongside the free space on each filesystem. |
 | **Backup list** | Displays the three rotating automatic backups and up to three separately retained manual backups. Select an automatic or manual archive to enable its restore and deletion actions. |
 | <kbd>Restore Selected</kbd> | Confirms and restores the selected archive as a complete MerVLAN installation, settings, data, public UI, hooks, and configured-node state. |
 | <kbd>Delete Selected</kbd> | Permanently deletes the selected persistent archive after confirmation. |
@@ -678,6 +678,8 @@ The **Restore** tab is the backup-management frontend. Its controls are:
 | <kbd>Undo Update</kbd> | Returns to the automatic pre-update backup referenced by the temporary undo marker. The shortcut is lost on reboot; it also becomes unavailable if its referenced backup is deleted. |
 
 Create, delete, restore, undo, and update confirmations use a centered in-addon dialog. Leave both dialogs open while an operation is running. All maintenance actions share one lock, disable conflicting controls, and report progress in the modal, so overlapping destructive operations are rejected. Select <kbd>Check Backups</kbd> again after out-of-band CLI maintenance to refresh the displayed inventory.
+
+**MerVLAN storage use** counts the active addon and backup trees on JFFS. Its RAM value counts `/tmp/mervlan_tmp`, the published `/www/user/mervlan` assets, and the published ASP page without following public settings/log/result symlinks. When `/tmp` and `/www` are separate filesystems, they are shown as separate rows instead of a combined RAM figure. Tiny shared hook/metadata files and short-lived scratch files outside the managed roots are intentionally excluded. The displayed figures are informational; every update, backup, restore, and undo still performs its own destination-specific capacity check with a safety reserve when the operation starts.
 
 ### Manual Update Commands
 
@@ -735,7 +737,7 @@ MerVLAN keeps the three newest automatic backups created during updates and up t
 
 1. Open the version modal and select **Restore**.
 2. Select <kbd>Check Backups</kbd>.
-3. Check the persistent and temporary storage figures before creating a backup or starting a restore.
+3. Check the MerVLAN JFFS and RAM storage figures before creating a backup or starting a restore.
 4. Choose any automatic or manual archive.
 5. Select <kbd>Restore Selected</kbd> and confirm the exact archive in the centered confirmation dialog.
 6. Leave the modal open while validation, activation, public refresh, hook setup, and node synchronization run.
@@ -822,10 +824,10 @@ These commands are useful when working over SSH on the main router. Most users s
 
 | Command | What it does |
 | --- | --- |
-| <pre>`sh install.sh full`</pre> | Perform a fresh installation from the `main` public beta channel. Downloads the package, installs the required files, runs the hardware probe, and sets up the web UI. |
+| <pre>`sh install.sh full`</pre> | Perform a fresh installation from the `main` public beta channel. Downloads and extracts the package in an installer-owned temporary workspace, removes that workspace afterward, installs the required files, runs the hardware probe, and sets up the web UI. |
 | <pre>`sh install.sh full dev`</pre> | Perform a fresh installation from the `dev` development channel. |
-| <pre>`TMP_DIR=/tmp/mervlan_staging sh install.sh download`</pre> | Download the MerVLAN tarball to a staging directory without installing it. |
-| <pre>`TMP_DIR=/tmp/mervlan_staging sh install.sh tarball`</pre> | Install MerVLAN from a previously downloaded tarball in the staging directory. |
+| <pre>`TMP_DIR=/tmp/mervlan_staging sh install.sh download`</pre> | Download and intentionally retain the MerVLAN tarball in a caller-selected staging directory without installing it. |
+| <pre>`TMP_DIR=/tmp/mervlan_staging sh install.sh tarball`</pre> | Install MerVLAN from a retained tarball. The source archive remains in the selected staging directory while the installer-owned extraction workspace is removed afterward. |
 | <pre>`sh install.sh credentials`</pre> | Update only the stored SSH username and SSH port. |
 | <pre>`sh install.sh reinstall`</pre> | Rebuild and verify the complete public/runtime projection from the existing local addon tree while preserving existing logs. This does not first remove stale public publication and deliberately does not reconcile service hooks or nodes. |
 | <pre>`sh uninstall.sh reinstall && sh install.sh reinstall`</pre> | Recommended log-preserving refresh of the web UI/menu registration, public assets, settings/log/result symlinks, SSH-key publication, permissions, runtime directories, and missing log files from the currently installed source tree. Existing boot, cron, service-hook, and node state is left in place. |

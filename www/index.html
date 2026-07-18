@@ -219,7 +219,12 @@
     .backup-type-badge { color: #9ccbf0; text-transform: capitalize; }
     .backup-empty { color: #999; padding: 12px 8px; text-align: center; }
     .backup-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-    .backup-storage-summary { margin: 7px 0; padding: 7px 8px; border-radius: 4px; background: rgba(0, 0, 0, 0.16); color: #aaa; font-size: 0.82rem; line-height: 1.45; }
+    .backup-inventory-toolbar { align-items: center; justify-content: space-between; flex-wrap: nowrap; }
+    .backup-count-text { display: inline-flex; align-items: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .backup-storage-summary { display: grid; grid-template-columns: minmax(120px, auto) 1fr; align-items: center; gap: 12px; margin: 7px 0; padding: 7px 8px; border-radius: 4px; background: rgba(0, 0, 0, 0.16); color: #aaa; font-size: 0.82rem; line-height: 1.45; }
+    .backup-storage-heading { color: #bbb; white-space: nowrap; }
+    .backup-storage-values { display: grid; gap: 1px; min-width: 0; text-align: right; font-variant-numeric: tabular-nums; }
+    .backup-storage-row { white-space: nowrap; }
     .backup-undo-section { border-top: 1px solid rgba(108, 186, 245, 0.28); padding-top: 9px; }
     .backup-undo-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 7px; }
     .backup-undo-copy { flex: 1; min-width: 0; color: #999; font-size: 0.82rem; overflow-wrap: anywhere; }
@@ -298,6 +303,14 @@
       min-width: 0;
       max-width: 100%;
       overflow-x: hidden;
+    }
+
+    #versionModal.version-modal--restore #versionRestorePanel > .modal__section { margin-bottom: 14px; }
+
+    @media (max-width: 480px) {
+      .backup-inventory-toolbar { align-items: flex-start; flex-wrap: wrap; }
+      .backup-storage-summary { grid-template-columns: 1fr; gap: 3px; }
+      .backup-storage-values { text-align: left; }
     }
 
     .maintenance-confirm-overlay {
@@ -748,13 +761,16 @@
 
       <div id="versionRestorePanel" role="tabpanel" style="display:none;">
         <div class="modal__section">
-          <div class="backup-actions">
+          <div class="backup-actions backup-inventory-toolbar">
             <button type="button" class="button_gen" id="refreshBackupsBtn" onclick="refreshBackupInventory(this)">Check Backups</button>
-            <span id="backupCountText" class="muted">Automatic: 0/3 &nbsp; Manual: 0/3</span>
+            <span id="backupCountText" class="muted backup-count-text">Automatic: 0/3 &nbsp; Manual: 0/3</span>
           </div>
           <div class="backup-storage-summary" aria-live="polite">
-            <div id="persistentBackupStorageText">Persistent backup storage (JFFS): checking used and available space…</div>
-            <div id="temporaryBackupStorageText">Temporary undo storage (/tmp): checking used and available space…</div>
+            <div id="managedStorageHeading" class="backup-storage-heading">MerVLAN storage use</div>
+            <div id="managedStorageRows" class="backup-storage-values">
+              <div class="backup-storage-row">JFFS: checking…</div>
+              <div class="backup-storage-row">RAM: checking…</div>
+            </div>
           </div>
           <div id="backupInventoryList" class="backup-inventory-list">
             <div class="backup-empty">Select Check Backups to load restore points.</div>
@@ -772,7 +788,7 @@
         <div class="modal__section">
           <label for="manualBackupTag"><strong>Create Manual Backup:</strong></label>
           <input type="text" id="manualBackupTag" class="input_option backup-manual-input" maxlength="24" placeholder="e.g. before-vlan-test" oninput="validateManualBackupTag()">
-          <p class="channel-capability-hint">1-24 letters, numbers, underscores, or hyphens. Manual backups are limited to three.</p>
+          <p class="channel-capability-hint">Tag: 1–24 characters — A–Z, a–z, 0–9, - and _.</p>
           <div class="backup-actions">
             <button type="button" class="button_gen" id="createManualBackupBtn" onclick="createManualBackup()" disabled>Create Backup</button>
           </div>
@@ -780,7 +796,7 @@
 
         <div class="modal__section backup-undo-section">
           <strong>Temporary Undo</strong>
-          <p class="channel-capability-hint">Temporary undo state is stored in /tmp and expires when the router reboots or temporary storage is cleared.</p>
+          <p class="channel-capability-hint">Temporary undo files are stored in /tmp until reboot.</p>
           <div class="backup-undo-row">
             <span id="undoRestoreStatus" class="backup-undo-copy">No Undo Restore file detected.</span>
             <button type="button" class="button_gen" id="undoRestoreBtn" onclick="undoLastRestore()" disabled>Undo Restore</button>
@@ -5894,14 +5910,19 @@ function anchorModalToForm(modal) {
 
     let anchorOffset = 0;
     if (modal.id === 'versionModal') {
-      const modalHeight = modal.offsetHeight || modal.getBoundingClientRect().height || 0;
       const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
-      const formTop = scrollY + formRect.top;
-      const formBottom = scrollY + formRect.bottom;
-      const viewportBottom = viewportHeight ? scrollY + viewportHeight : formBottom;
-      const safeBottom = Math.min(formBottom, viewportBottom) - 16;
-      const maxOffset = modalHeight ? safeBottom - formTop - modalHeight : 200;
-      anchorOffset = Math.max(12, Math.min(200, maxOffset));
+      const visibleTop = Math.max(0, formRect.top);
+      const visibleBottom = viewportHeight ? Math.min(viewportHeight, formRect.bottom) : formRect.bottom;
+      const availableHeight = Math.max(0, visibleBottom - visibleTop);
+      if (availableHeight > 0) {
+        modal.style.maxHeight = `${Math.floor(availableHeight)}px`;
+      }
+      const modalHeight = Math.min(
+        modal.offsetHeight || modal.getBoundingClientRect().height || 0,
+        availableHeight || Number.MAX_SAFE_INTEGER
+      );
+      const balancedGap = availableHeight > modalHeight ? (availableHeight - modalHeight) / 2 : 0;
+      anchorOffset = Math.max(0, visibleTop - formRect.top + balancedGap);
     } else if (modal.id === 'vlanManagerModal') {
       const modalHeight = modal.offsetHeight || 0;
       anchorOffset = Math.max(0, (formRect.height - modalHeight) / 2);
@@ -5922,6 +5943,7 @@ function releaseAnchoredModal(modal) {
   modal.style.top = '';
   modal.style.transform = '';
   modal.style.position = '';
+  modal.style.maxHeight = '';
 }
 
 function positionMaintenanceConfirmationOverlay() {
@@ -5957,6 +5979,9 @@ window.addEventListener('resize', () => {
 window.addEventListener('scroll', () => {
   if (activeCenteredModal) {
     requestAnimationFrame(() => centerModalOverForm(activeCenteredModal));
+  }
+  if (anchoredModal) {
+    anchorModalToForm(anchoredModal);
   }
   const confirmationOverlay = document.getElementById('maintenanceConfirmOverlay');
   if (confirmationOverlay && confirmationOverlay.classList.contains('is-visible')) {
@@ -6214,9 +6239,15 @@ function showMaintenanceConfirmation(options) {
 function setMaintenanceStatus(message, state) {
   const el = document.getElementById("maintenanceStatus");
   if (!el) return;
-  el.textContent = message || "";
+  const nextMessage = message || "";
+  const changed = el.textContent !== nextMessage;
+  el.textContent = nextMessage;
   el.classList.remove("is-success", "is-warning", "is-error");
   if (state) el.classList.add("is-" + state);
+  if (changed) {
+    const modal = document.getElementById("versionModal");
+    if (modal && modal.style.display !== "none") anchorModalToForm(modal);
+  }
 }
 
 function stopMaintenancePolling() {
@@ -6292,6 +6323,40 @@ function formatBackupSize(bytes) {
   return n + " B";
 }
 
+function renderManagedStorage(storage) {
+  const heading = document.getElementById("managedStorageHeading");
+  const rows = document.getElementById("managedStorageRows");
+  if (!rows) return;
+  rows.textContent = "";
+
+  function appendRow(label, metric) {
+    const row = document.createElement("div");
+    row.className = "backup-storage-row";
+    row.textContent = label + ": " + formatBackupSize(metric && metric.used_bytes) +
+      " used · " + formatBackupSize(metric && metric.available_bytes) + " free";
+    rows.appendChild(row);
+  }
+
+  const managed = storage && storage.managed;
+  if (managed && managed.jffs) {
+    if (heading) heading.textContent = "MerVLAN storage use";
+    appendRow("JFFS", managed.jffs);
+    if (managed.ram && managed.ram.combined === true) {
+      appendRow("RAM", managed.ram);
+    } else {
+      appendRow("/tmp", managed.tmp || {});
+      appendRow("/www", managed.www || {});
+    }
+    return;
+  }
+
+  // Mixed-version fallback while an older backend is still publishing the
+  // original backup-only inventory shape.
+  if (heading) heading.textContent = "Backup storage use";
+  appendRow("Backup files (JFFS)", storage && storage.persistent || {});
+  appendRow("Undo files (/tmp)", storage && storage.temporary || {});
+}
+
 function selectedBackupId() {
   const selected = document.querySelector('input[name="backupSelection"]:checked');
   return selected ? selected.value : "";
@@ -6319,18 +6384,7 @@ function renderBackupInventory(data) {
       "   Manual: " + (backupInventoryData.manual_count || 0) + "/" + (backupInventoryData.manual_limit || 3);
   }
   const storage = backupInventoryData.storage || {};
-  const persistent = storage.persistent || {};
-  const temporary = storage.temporary || {};
-  const persistentText = document.getElementById("persistentBackupStorageText");
-  const temporaryText = document.getElementById("temporaryBackupStorageText");
-  if (persistentText) {
-    persistentText.textContent = "Persistent backup storage (JFFS): " + formatBackupSize(persistent.used_bytes) +
-      " used / " + formatBackupSize(persistent.available_bytes) + " available";
-  }
-  if (temporaryText) {
-    temporaryText.textContent = "Temporary undo storage (/tmp): " + formatBackupSize(temporary.used_bytes) +
-      " used / " + formatBackupSize(temporary.available_bytes) + " available";
-  }
+  renderManagedStorage(storage);
   const undo = backupInventoryData.undo || {};
   const undoRestore = undo.restore || {};
   const undoUpdate = undo.update || {};
@@ -6339,16 +6393,21 @@ function renderBackupInventory(data) {
   if (undoRestoreStatus) {
     undoRestoreStatus.classList.toggle("is-available", undoRestore.available === true);
     undoRestoreStatus.textContent = undoRestore.available === true
-      ? "Undo Restore file detected — " + String(undoRestore.version || "unknown") + ", " +
-        String(undoRestore.created || "unknown") + ", " + formatBackupSize(undoRestore.size_bytes) + ". Lost on reboot."
+      ? "Undo Restore: " + String(undoRestore.version || "unknown") + " · " +
+        formatBackupSize(undoRestore.size_bytes) + " · expires on reboot"
       : "No Undo Restore file detected.";
+    undoRestoreStatus.title = undoRestore.available === true
+      ? "Created " + String(undoRestore.created || "unknown") + "; temporary archive is lost on reboot."
+      : "";
   }
   if (undoUpdateStatus) {
     undoUpdateStatus.classList.toggle("is-available", undoUpdate.available === true);
     undoUpdateStatus.textContent = undoUpdate.available === true
-      ? "Undo Update shortcut detected — restores " + String(undoUpdate.version || "unknown") +
-        " from " + String(undoUpdate.backup_id || "automatic backup") + ". Expires on reboot."
+      ? "Undo Update: restores " + String(undoUpdate.version || "unknown") + " · expires on reboot"
       : "No Undo Update shortcut detected.";
+    undoUpdateStatus.title = undoUpdate.available === true
+      ? "Uses " + String(undoUpdate.backup_id || "automatic backup") + "; shortcut is lost on reboot."
+      : "";
   }
   if (!list) return;
   list.textContent = "";
@@ -6464,6 +6523,8 @@ function startMaintenanceOperation(options) {
       } else {
         setMaintenanceStatus(result.message || "Maintenance operation failed.", "error");
       }
+      const versionModal = document.getElementById("versionModal");
+      if (versionModal && versionModal.style.display !== "none") anchorModalToForm(versionModal);
     } catch (_) {}
   };
   poll();
@@ -6614,10 +6675,10 @@ function openVersionModal() {
   if (backupList) backupList.innerHTML = '<div class="backup-empty">Select Check Backups to load restore points.</div>';
   const backupCount = document.getElementById("backupCountText");
   if (backupCount) backupCount.textContent = "Automatic: 0/3   Manual: 0/3";
-  const persistentStorage = document.getElementById("persistentBackupStorageText");
-  if (persistentStorage) persistentStorage.textContent = "Persistent backup storage (JFFS): checking used and available space…";
-  const temporaryStorage = document.getElementById("temporaryBackupStorageText");
-  if (temporaryStorage) temporaryStorage.textContent = "Temporary undo storage (/tmp): checking used and available space…";
+  const storageHeading = document.getElementById("managedStorageHeading");
+  if (storageHeading) storageHeading.textContent = "MerVLAN storage use";
+  const storageRows = document.getElementById("managedStorageRows");
+  if (storageRows) storageRows.innerHTML = '<div class="backup-storage-row">JFFS: checking…</div><div class="backup-storage-row">RAM: checking…</div>';
   const undoRestoreStatus = document.getElementById("undoRestoreStatus");
   if (undoRestoreStatus) {
     undoRestoreStatus.textContent = "No Undo Restore file detected.";
