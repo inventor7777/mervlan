@@ -617,8 +617,9 @@ case "$ACTION" in
 
     # Propagate enable action to all configured nodes via SSH
     if ! handle_nodes_via_ssh "enable"; then
-      _boot_partial=1
-      _boot_warnings='["One or more secondary enable operations failed"]'
+      # Local boot enable succeeded. Node propagation has historically been
+      # best-effort and must not make the local settings transaction fail.
+      _boot_warnings='["Boot enable succeeded locally; one or more nodes could not be reached"]'
     fi
     if [ "$_boot_partial" = "1" ]; then
       boot_action_ack_complete partial 1 "Boot service enabled with warnings" "$_boot_warnings"
@@ -664,8 +665,8 @@ case "$ACTION" in
 
     # Propagate disable action to all configured nodes via SSH
     if ! handle_nodes_via_ssh "disable"; then
-      _boot_partial=1
-      _boot_warnings='["One or more secondary disable operations failed"]'
+      # Local boot disable succeeded. Keep node propagation as best-effort.
+      _boot_warnings='["Boot disable succeeded locally; one or more nodes could not be reached"]'
     fi
     if [ "$_boot_partial" = "1" ]; then
       boot_action_ack_complete partial 0 "Boot service disabled with warnings" "$_boot_warnings"
