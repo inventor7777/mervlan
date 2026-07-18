@@ -119,8 +119,33 @@ CUSTOM_SETTINGS_FILE="/jffs/addons/custom_settings.txt"
 
 get_action_request_token() {
   grep '^vlanmgr_action_request_token=' "$CUSTOM_SETTINGS_FILE" 2>/dev/null | \
-    head -n1 | cut -d'=' -f2- | \
+    tail -n1 | cut -d'=' -f2- | \
     tr -cd 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-'
+}
+
+decode_hex_ascii() {
+  _dha_hex="$1"
+  case "$_dha_hex" in ''|*[!0-9a-f]*) return 1 ;; esac
+  [ $(( ${#_dha_hex} % 2 )) -eq 0 ] || return 1
+  _dha_escaped=""
+  while [ -n "$_dha_hex" ]; do
+    _dha_pair="${_dha_hex%${_dha_hex#??}}"
+    _dha_hex="${_dha_hex#??}"
+    _dha_oct=$(printf '%03o' "$((0x$_dha_pair))") || return 1
+    _dha_escaped="${_dha_escaped}\\${_dha_oct}"
+  done
+  printf '%b' "$_dha_escaped"
+}
+
+get_verified_action_token() {
+  _vat_action="$1"
+  _vat_base="$2"
+  _vat_hex="${_vat_action#${_vat_base}_vrt_}"
+  [ "$_vat_hex" != "$_vat_action" ] || return 1
+  _vat_token=$(decode_hex_ascii "$_vat_hex") || return 1
+  _vat_clean=$(printf '%s' "$_vat_token" | tr -cd 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-')
+  [ -n "$_vat_token" ] && [ "$_vat_clean" = "$_vat_token" ] || return 1
+  printf '%s\n' "$_vat_token"
 }
 
 decode_update_ref_action() {
@@ -129,17 +154,7 @@ decode_update_ref_action() {
   _ura_hex="${_ura_encoded#*_}"
   [ "$_ura_hex" != "$_ura_encoded" ] || return 1
   case "$_ura_kind" in h|t) ;; *) return 1 ;; esac
-  case "$_ura_hex" in ''|*[!0-9a-f]*) return 1 ;; esac
-  [ $(( ${#_ura_hex} % 2 )) -eq 0 ] || return 1
-
-  _ura_escaped=""
-  while [ -n "$_ura_hex" ]; do
-    _ura_pair="${_ura_hex%${_ura_hex#??}}"
-    _ura_hex="${_ura_hex#??}"
-    _ura_oct=$(printf '%03o' "$((0x$_ura_pair))") || return 1
-    _ura_escaped="${_ura_escaped}\\${_ura_oct}"
-  done
-  _ura_name=$(printf '%b' "$_ura_escaped")
+  _ura_name=$(decode_hex_ascii "$_ura_hex") || return 1
   _ura_clean=$(printf '%s' "$_ura_name" | tr -cd 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/._-')
   [ -n "$_ura_name" ] && [ "$_ura_clean" = "$_ura_name" ] || return 1
   case "$_ura_name" in *..*|*//*|/*|*/|.*|*.lock) return 1 ;; esac
@@ -178,7 +193,7 @@ APP_EVENT=0
 case "${TYPE}_${EVENT}" in
   save_vlanmgr|apply_vlanmgr|sync_vlanmgr|executenodes_vlanmgr|\
   executenodesonly_vlanmgr|genkey_vlanmgr|enableservice_vlanmgr|\
-  disableservice_vlanmgr|checkservice_vlanmgr|collectclients_vlanmgr|\
+  disableservice_vlanmgr|enableservice_vlanmgr_vrt_*|disableservice_vlanmgr_vrt_*|checkservice_vlanmgr|collectclients_vlanmgr|\
   clearclilog_vlanmgr|update_vlanmgr|updatedev_vlanmgr|updaterelease_vlanmgr|updateref_vlanmgr_*|hwprobe_vlanmgr|macrefresh_vlanmgr|\
   macclientmeta_vlanmgr)
     APP_EVENT=1
@@ -460,10 +475,26 @@ case "${TYPE}_${EVENT}" in
     _action_token="$(get_action_request_token)"
     dispatch_if_executable "/jffs/addons/mervlan/functions/mervlan_boot.sh" enable "$_action_token"
     ;;
+  enableservice_vlanmgr_vrt_*)
+    _action_token="$(get_verified_action_token "${TYPE}_${EVENT}" enableservice_vlanmgr)"
+    if [ -n "$_action_token" ]; then
+      dispatch_if_executable "/jffs/addons/mervlan/functions/mervlan_boot.sh" enable "$_action_token"
+    else
+      logger -t "VLANMgr" "handler: rejected enable action with invalid verification token"
+    fi
+    ;;
   disableservice_vlanmgr)
     # Disable MerVLAN auto-start on boot (triggered by service toggle)
     _action_token="$(get_action_request_token)"
     dispatch_if_executable "/jffs/addons/mervlan/functions/mervlan_boot.sh" disable "$_action_token"
+    ;;
+  disableservice_vlanmgr_vrt_*)
+    _action_token="$(get_verified_action_token "${TYPE}_${EVENT}" disableservice_vlanmgr)"
+    if [ -n "$_action_token" ]; then
+      dispatch_if_executable "/jffs/addons/mervlan/functions/mervlan_boot.sh" disable "$_action_token"
+    else
+      logger -t "VLANMgr" "handler: rejected disable action with invalid verification token"
+    fi
     ;;
   checkservice_vlanmgr)
     # Check MerVLAN service status (triggered by status query)
