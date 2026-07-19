@@ -1,5 +1,29 @@
 mervlan v0.53.22-dev
 
+New: Interactive, verifiable standalone installer
+- `install.sh full` now provides one guided source, existing-installation, and
+  SSH configuration flow with latest-release resolution and a main fallback.
+- Added `install.sh full --test-run`, which exercises the real download,
+  validation, settings migration, hardware detection, runtime, and optional
+  Web UI/menu flow in isolated paths before proving cleanup and active-data
+  isolation. The old `full dev` form remains a compatibility alias.
+- Full reinstall can preserve the same settings, client databases, and SSH key
+  files as the updater, while clean installs require explicit confirmation.
+- Normal, test, tarball, boot-time, and reinstall paths now end with a verified
+  PASS/FAIL/SKIPPED result summary instead of an unconditional success line.
+- Stable resolution now tries the latest published GitHub Release, then
+  semantically selects the newest stable `vX.Y.Z` tag before using `main` as a
+  warning-level fallback. Full installs show timed phase progress and retain a
+  concise diagnostic log at `/tmp/mervlan-installer-last.log`.
+- Preserved settings are merged with one output rewrite instead of one rewrite
+  per value, eliminating the long silent pause on router storage. The optional
+  test page now derives its shell directly from the downloaded `mervlan.asp`
+  and changes only its title, height, and isolated diagnostic iframe target.
+  Test cleanup atomically removes and remounts the temporary menu entry, checks
+  the complete menu-tree digest, and tells the user to refresh the browser DOM.
+  Bind refresh no longer relies on firmware-specific `/proc/mounts` formatting
+  and repairs a stale served-menu inode even when `/tmp/menuTree.js` is clean.
+
 New: Integrated backup and transactional restore management
 - The version modal now has Update and Restore tabs. Restore lists live on-router
   automatic/manual archives and can create, restore, delete, or delete all with

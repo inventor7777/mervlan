@@ -170,13 +170,36 @@ Before installing, skim the [MerVLAN Help Guide](docs/HELP.md), especially the t
 mkdir -p /jffs/addons/mervlan && /usr/sbin/curl -fsL --retry 3 "https://raw.githubusercontent.com/r80xcore/mervlan/refs/heads/main/install.sh" -o "/jffs/addons/mervlan/install.sh" && chmod 0755 /jffs/addons/mervlan/install.sh && /jffs/addons/mervlan/install.sh full
 ```
 
-### Development install
+The interactive installer lets you select the latest stable release or the
+development branch, review SSH settings, and choose whether an existing valid
+installation should be preserved or replaced. Stable installation first uses
+the latest published GitHub Release, then the newest stable `vX.Y.Z` tag, and
+uses the current `main` branch only if neither can be resolved.
 
-Use this if you want to test the latest development build. It may contain unfinished changes and can be less stable than the `main` branch, but may include support for additional devices, security improvements, and newer implementations.
+To exercise the same full installer flow without changing an active MerVLAN
+installation, use the isolated test mode:
 
 ```sh
-mkdir -p /jffs/addons/mervlan && /usr/sbin/curl -fsL --retry 3 "https://raw.githubusercontent.com/r80xcore/mervlan/refs/heads/dev/install.sh" -o "/jffs/addons/mervlan/install.sh" && chmod 0755 /jffs/addons/mervlan/install.sh && /jffs/addons/mervlan/install.sh full dev
+/jffs/addons/mervlan/install.sh full --test-run
 ```
+
+Test mode installs under `/jffs/addons/mervlan-test-run`, uses
+`/tmp/mervlan_tmp/test-run`, optionally publishes a temporary **MerVLAN Test**
+LAN page inside the normal Merlin page frame for manual confirmation, verifies
+that active user files remain unchanged, and removes all test resources
+afterward. Installer phase/error details remain available in
+`/tmp/mervlan-installer-last.log` until the next full installer run. Refresh
+the already-open Merlin page after completion so its in-browser menu reflects
+the removed temporary tab.
+
+### Development install
+
+Select **Development branch** in the `install.sh full` wizard. It may contain
+unfinished changes and can be less stable than the stable release, but may
+include support for additional devices, security improvements, and newer
+implementations. The older `install.sh full dev` form remains accepted as a
+compatibility alias, but interactive source selection is the preferred
+workflow.
 
 This will:
 
