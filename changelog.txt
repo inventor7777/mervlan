@@ -63,6 +63,19 @@ New: Integrated backup and transactional restore management
   evaluate only output appended by the current request. Old success/failure
   lines can no longer finish a new update early; retained, cleared, and trimmed
   log transitions are all handled.
+- The updater now uses an explicit checking/running/success/failure/detached
+  lifecycle instead of temporarily disabling its action. While installation is
+  active, target controls and Restore are visibly locked and the disabled action
+  shows a stationary Updating label with zero-to-three animated dots. Success
+  hides the live viewer and replaces the action with Refresh Now; confirmed
+  failure restores retry controls, while timeouts remain safely locked.
+- Update progress now wraps the current log entry across three visible rows.
+  Both Update and Restore dynamically remeasure and re-anchor the version modal
+  as their content changes, keeping it centered within the visible addon edges.
+- Exiting an active update now preserves the router-side operation as a detached
+  session, prevents accidental duplicate updates if the modal is reopened, and
+  directs monitoring to INFO and an F5 refresh after success. Its Stay/Exit
+  actions sit at the warning's upper-right so explanatory text can wrap beneath.
 - The log viewer now exposes only the three real addon logs: VLAN Manager, CLI
   Output, and Boot & Startup. Removed the unused Syslog UI path, fixed immediate
   tab loading/cache behavior, and added boot_wrap.json publication for every

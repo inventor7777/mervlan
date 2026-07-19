@@ -77,13 +77,16 @@
     .update-log-line {
       font-family: monospace;
       font-size: 0.85rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      line-height: 1.35;
+      white-space: normal;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overflow-wrap: anywhere;
       border-top: 1px solid rgba(255, 255, 255, 0.08);
       padding-top: 4px;
       margin-top: 4px;
-      min-height: 1.4em;
+      height: 4.05em;
+      box-sizing: content-box;
     }
 
     .update-log-line--success {
@@ -95,18 +98,28 @@
     }
 
     .update-exit-warning {
-      display: flex;
-      align-items: center;
-      gap: 8px;
       padding: 6px 8px;
       background: rgba(255, 138, 60, 0.12);
       border: 1px solid rgba(255, 138, 60, 0.4);
       border-radius: 4px;
       font-size: 0.88rem;
+      line-height: 1.4;
       margin-bottom: 4px;
     }
 
-    .update-exit-warning span { flex: 1; }
+    .update-exit-warning::after {
+      content: "";
+      display: block;
+      clear: both;
+    }
+
+    .update-exit-warning__actions {
+      float: right;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin: 0 0 4px 10px;
+    }
 
     .update-btn--warn {
       border-color: rgba(255, 138, 60, 0.6) !important;
@@ -188,6 +201,28 @@
       color: #fff !important;
       border-color: #6cbaf5 !important;
       background: rgba(108, 186, 245, 0.2) !important;
+    }
+
+    .version-modal-tab:disabled {
+      opacity: 0.32;
+      cursor: not-allowed;
+      filter: grayscale(1);
+    }
+
+    #runUpdateBtn.update-action--busy {
+      min-width: 112px;
+      cursor: wait;
+    }
+
+    .update-action-busy__content {
+      display: inline-flex;
+      align-items: baseline;
+    }
+
+    .update-action-busy__dots {
+      display: inline-block;
+      width: 3ch;
+      text-align: left;
     }
 
     .backup-inventory-list {
@@ -677,9 +712,11 @@
 
       <!-- Exit-during-update confirmation bar -->
       <div id="updateExitWarning" class="update-exit-warning" style="display:none;">
-        <span>A maintenance operation is in progress. Really exit?</span>
-        <button type="button" class="button_gen" onclick="dismissUpdateExitWarning()">Stay</button>
-        <button type="button" class="button_gen update-btn--warn" onclick="forceCloseVersionModal()">Exit anyway</button>
+        <div class="update-exit-warning__actions">
+          <button type="button" class="button_gen" onclick="dismissUpdateExitWarning()">Stay</button>
+          <button type="button" class="button_gen update-btn--warn" onclick="forceCloseVersionModal()">Exit anyway</button>
+        </div>
+        <span id="updateExitWarningText">A maintenance operation is in progress. Really exit?</span>
       </div>
 
       <div class="version-modal-tabs" role="tablist" aria-label="Version maintenance">
@@ -3759,6 +3796,9 @@ function toggleCliFullsize() {
     let updateSpinnerTimer = null;
     let updateSpinnerPhase = 0;
     let isUpdateInProgress = false;
+    let updateFlowState = "idle";
+    let updateActionIdleText = "Update now";
+    let updateActionIdleDisplay = "none";
 
     let updateLogTimer = null;
     let lastUpdateLogLine = "";
@@ -3783,10 +3823,99 @@ function toggleCliFullsize() {
       statusEl.style.color = color || "";
     }
 
+    function updateFlowLocksControls(state) {
+      return state === "checking" || state === "running" || state === "success" ||
+        state === "detached" || state === "timeout";
+    }
+
+    function setUpdateControlsLocked(locked) {
+      ["checkUpdateBtn", "versionChannelSelect", "releaseSelect", "customBranchInput",
+       "clearLogsBeforeUpdate", "versionRestoreTab"]
+        .forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.disabled = !!locked;
+        });
+    }
+
+    function rememberUpdateAction(buttonEl) {
+      if (!buttonEl) return;
+      updateActionIdleText = buttonEl.textContent || "Update now";
+      updateActionIdleDisplay = buttonEl.style.display || "inline-block";
+    }
+
+    function setUpdateFlowState(state) {
+      updateFlowState = state;
+      isUpdateInProgress = state === "checking" || state === "running";
+      setUpdateControlsLocked(updateFlowLocksControls(state));
+
+      const button = document.getElementById("runUpdateBtn");
+      const refreshButton = document.getElementById("refreshNowBtn");
+      if (refreshButton) refreshButton.style.display = state === "success" ? "inline-block" : "none";
+      if (!button) return;
+
+      button.classList.toggle("update-action--busy", state === "checking" || state === "running");
+      if (state === "checking") {
+        button.style.display = updateActionIdleDisplay === "none" ? "inline-block" : updateActionIdleDisplay;
+        button.textContent = "Checking...";
+        button.disabled = true;
+        button.setAttribute("aria-busy", "true");
+        button.removeAttribute("aria-label");
+      } else if (state === "running") {
+        button.style.display = updateActionIdleDisplay === "none" ? "inline-block" : updateActionIdleDisplay;
+        button.disabled = true;
+        button.setAttribute("aria-busy", "true");
+      } else if (state === "success") {
+        button.style.display = "none";
+        button.disabled = true;
+        button.removeAttribute("aria-busy");
+        button.removeAttribute("aria-label");
+      } else if (state === "detached" || state === "timeout") {
+        button.style.display = "inline-block";
+        button.textContent = "Update status unknown";
+        button.disabled = true;
+        button.removeAttribute("aria-busy");
+        button.removeAttribute("aria-label");
+      } else {
+        button.style.display = updateActionIdleDisplay;
+        button.textContent = updateActionIdleText;
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+        button.removeAttribute("aria-label");
+      }
+    }
+
+    function renderUpdateButtonProgress(dots) {
+      const button = document.getElementById("runUpdateBtn");
+      if (!button || updateFlowState !== "running") return;
+
+      let content = button.querySelector(".update-action-busy__content");
+      if (!content) {
+        button.textContent = "";
+        content = document.createElement("span");
+        content.className = "update-action-busy__content";
+        const label = document.createElement("span");
+        label.textContent = "Updating";
+        const dotArea = document.createElement("span");
+        dotArea.className = "update-action-busy__dots";
+        dotArea.setAttribute("aria-hidden", "true");
+        content.appendChild(label);
+        content.appendChild(dotArea);
+        button.appendChild(content);
+      }
+      const dotArea = content.querySelector(".update-action-busy__dots");
+      if (dotArea) dotArea.textContent = dots;
+      button.setAttribute("aria-label", "Updating");
+    }
+
     function startUpdateSpinner() {
-      const patterns = [".", "..", "..."];
+      const patterns = ["", ".", "..", "..."];
       updateSpinnerPhase = 0;
-      setUpdateStatus("Updating" + patterns[updateSpinnerPhase]);
+      setUpdateStatus("Update in progress");
+
+      const renderButton = () => {
+        renderUpdateButtonProgress(patterns[updateSpinnerPhase]);
+      };
+      renderButton();
 
       if (updateSpinnerTimer) {
         clearInterval(updateSpinnerTimer);
@@ -3794,7 +3923,7 @@ function toggleCliFullsize() {
 
       updateSpinnerTimer = setInterval(() => {
         updateSpinnerPhase = (updateSpinnerPhase + 1) % patterns.length;
-        setUpdateStatus("Updating" + patterns[updateSpinnerPhase]);
+        renderButton();
       }, 400);
     }
 
@@ -3812,6 +3941,11 @@ function toggleCliFullsize() {
       const sec = document.getElementById("updateLogSection");
       if (!sec) return;
       sec.style.display = show ? "block" : "none";
+    }
+
+    function showUpdateLogViewer(show) {
+      const viewer = document.getElementById("updateLogLine");
+      if (viewer) viewer.style.display = show ? "block" : "none";
     }
 
     function updateLogTextAfterBaseline(text) {
@@ -3907,9 +4041,10 @@ function toggleCliFullsize() {
 
         if (lines.slice(-Math.min(5, lines.length)).some(line => /MerVLAN update completed successfully/i.test(line))) {
           logLineEl.classList.add("update-log-line--success");
-          isUpdateInProgress = false;
           stopUpdateSpinner("Update completed", "#7bd77b");
+          setUpdateFlowState("success");
           stopUpdateLogPolling();
+          showUpdateLogViewer(false);
           const completeMsg = document.getElementById("updateCompleteMessage");
           if (completeMsg) {
             const undoAvailable = lines.slice(-Math.min(20, lines.length)).some(line => /Undo Update is available until the router reboots/i.test(line));
@@ -3918,12 +4053,10 @@ function toggleCliFullsize() {
               : "Update complete — no temporary Undo Update shortcut is available. Refresh your browser to load the new version.";
             completeMsg.style.display = "block";
           }
-          const refreshNowBtn = document.getElementById("refreshNowBtn");
-          if (refreshNowBtn) refreshNowBtn.style.display = "inline-block";
         } else if (lines.slice(-Math.min(10, lines.length)).some(line => /Update failed in stage:|update.*fail/i.test(line))) {
           logLineEl.classList.add("update-log-line--error");
-          isUpdateInProgress = false;
           stopUpdateSpinner("Update failed", "#ff8a8a");
+          setUpdateFlowState("failed");
           stopUpdateLogPolling();
         }
       } catch (e) {
@@ -3943,6 +4076,7 @@ function toggleCliFullsize() {
       updateLogBaselineText = "";
       updateLogBaselineReady = false;
       showUpdateLogSection(true);
+      showUpdateLogViewer(true);
 
       // Capture the retained log before submitting this update. Completion and
       // failure detection then inspect only content written after this point.
@@ -3957,12 +4091,12 @@ function toggleCliFullsize() {
       if (_updateTimeoutId) clearTimeout(_updateTimeoutId);
       _updateTimeoutId = setTimeout(() => {
         if (isUpdateInProgress) {
-          isUpdateInProgress = false;
-          stopUpdateSpinner("Timed out", "#ffaa6b");
+          stopUpdateSpinner("Status unknown", "#ffaa6b");
+          setUpdateFlowState("timeout");
           stopUpdateLogPolling();
           const logLineEl2 = document.getElementById("updateLogLine");
           if (logLineEl2) {
-            logLineEl2.textContent = "Update timed out \u2014 check the CLI log for details.";
+            logLineEl2.textContent = "Live progress timed out \u2014 the update may still be running. Continue monitoring it from the INFO tab.";
             logLineEl2.classList.add("update-log-line--error");
           }
         }
@@ -5850,6 +5984,26 @@ async function runMacRefresh() {
 const MODAL_SAFE_MARGIN = 24;
 let activeCenteredModal = null;
 let anchoredModal = null;
+let anchoredModalResizeObserver = null;
+let anchoredModalResizeFrame = 0;
+
+function observeAnchoredModal(modal) {
+  if (!modal || typeof ResizeObserver !== 'function') return;
+  if (!anchoredModalResizeObserver) {
+    anchoredModalResizeObserver = new ResizeObserver(() => {
+      if (!anchoredModal || anchoredModal.style.display === 'none') return;
+      if (anchoredModalResizeFrame) cancelAnimationFrame(anchoredModalResizeFrame);
+      anchoredModalResizeFrame = requestAnimationFrame(() => {
+        anchoredModalResizeFrame = 0;
+        if (anchoredModal && anchoredModal.style.display !== 'none') {
+          anchorModalToForm(anchoredModal);
+        }
+      });
+    });
+  }
+  anchoredModalResizeObserver.disconnect();
+  anchoredModalResizeObserver.observe(modal);
+}
 
 function centerModalOverForm(modal) {
   if (!modal) return;
@@ -5899,7 +6053,9 @@ function anchorModalToForm(modal) {
   const form = document.querySelector('.form-box--main');
   if (!form) return;
 
+  const modalChanged = anchoredModal !== modal;
   anchoredModal = modal;
+  if (modalChanged) observeAnchoredModal(modal);
 
   requestAnimationFrame(() => {
     if (anchoredModal !== modal) return;
@@ -5934,8 +6090,14 @@ function anchorModalToForm(modal) {
 }
 
 function releaseAnchoredModal(modal) {
-  if (anchoredModal === modal) {
+  const wasAnchored = anchoredModal === modal;
+  if (wasAnchored) {
     anchoredModal = null;
+    if (anchoredModalResizeObserver) anchoredModalResizeObserver.disconnect();
+    if (anchoredModalResizeFrame) {
+      cancelAnimationFrame(anchoredModalResizeFrame);
+      anchoredModalResizeFrame = 0;
+    }
   }
   if (!modal) return;
   modal.classList.remove('modal--anchored');
@@ -6291,6 +6453,7 @@ function setMaintenanceBusy(busy) {
 
 function selectVersionModalTab(tab) {
   if (isUpdateInProgress) return;
+  if (tab === "restore" && updateFlowLocksControls(updateFlowState)) return;
   const restore = tab === "restore";
   const updatePanel = document.getElementById("versionUpdatePanel");
   const restorePanel = document.getElementById("versionRestorePanel");
@@ -6650,6 +6813,7 @@ async function undoLastUpdate() {
 function openVersionModal() {
   const modal = document.getElementById("versionModal");
   if (!modal) return;
+  const retainedUpdateFlowState = updateFlowState;
   settleMaintenanceConfirmation(false);
   modal.scrollTop = 0;
 
@@ -6697,6 +6861,7 @@ function openVersionModal() {
   const logLineEl = document.getElementById("updateLogLine");
   if (logLineEl) {
     logLineEl.textContent = "";
+    logLineEl.style.display = "block";
     logLineEl.classList.remove("update-log-line--success", "update-log-line--error");
   }
 
@@ -6708,11 +6873,16 @@ function openVersionModal() {
   if (runUpdateBtn) {
     runUpdateBtn.style.display = "none";
     runUpdateBtn.textContent = "Update now";
+    runUpdateBtn.disabled = false;
+    runUpdateBtn.classList.remove("update-action--busy");
+    runUpdateBtn.removeAttribute("aria-busy");
     runUpdateBtn.classList.remove("update-btn--warn");
     runUpdateBtn.removeAttribute("data-channel");
     runUpdateBtn.removeAttribute("data-latest");
     runUpdateBtn.removeAttribute("data-ref");
   }
+  updateActionIdleText = "Update now";
+  updateActionIdleDisplay = "none";
 
   const releaseSelectSection = document.getElementById("releaseSelectSection");
   if (releaseSelectSection) releaseSelectSection.style.display = "none";
@@ -6752,6 +6922,28 @@ function openVersionModal() {
   updateChannelCapabilityHint("main");
 
   modal.style.display = "block";
+  if (retainedUpdateFlowState === "success") {
+    setUpdateFlowState("success");
+    setUpdateStatus("Update completed", "#7bd77b");
+    showUpdateLogSection(true);
+    showUpdateLogViewer(false);
+    if (completeMsg) {
+      completeMsg.textContent = "Update complete \u2014 refresh your browser to load the new version.";
+      completeMsg.style.display = "block";
+    }
+  } else if (retainedUpdateFlowState === "detached" || retainedUpdateFlowState === "timeout") {
+    setUpdateFlowState(retainedUpdateFlowState);
+    setUpdateStatus("Continue monitoring from INFO", "#ffaa6b");
+    showUpdateLogSection(true);
+    if (logLineEl) {
+      logLineEl.textContent = retainedUpdateFlowState === "timeout"
+        ? "Live progress timed out \u2014 the update may still be running. Continue monitoring it from the INFO tab."
+        : "Live progress was closed. The update continues in the background; monitor it from the INFO tab.";
+      logLineEl.classList.remove("update-log-line--success", "update-log-line--error");
+    }
+  } else {
+    setUpdateFlowState("idle");
+  }
   anchorModalToForm(modal);
 
   if (overlay) {
@@ -6770,8 +6962,14 @@ function openVersionModal() {
 function closeVersionModal() {
   if (isUpdateInProgress) {
     const exitWarning = document.getElementById("updateExitWarning");
+    const exitWarningText = document.getElementById("updateExitWarningText");
+    if (exitWarningText) {
+      exitWarningText.textContent = updateFlowState === "checking" || updateFlowState === "running"
+        ? "Update in progress. Exiting will not stop the update, but you will lose automated progress tracking in this window. Check the progress from the INFO tab and refresh the UI (F5) upon success."
+        : "A maintenance operation is in progress. Exiting will not stop it, but live progress in this window will be lost.";
+    }
     if (exitWarning) {
-      exitWarning.style.display = "flex";
+      exitWarning.style.display = "block";
       return;
     }
   }
@@ -7774,7 +7972,13 @@ function dismissUpdateExitWarning() {
 
 function forceCloseVersionModal() {
   dismissUpdateExitWarning();
-  isUpdateInProgress = false;
+  if (updateFlowState === "checking" || updateFlowState === "running") {
+    stopUpdateSpinner();
+    stopUpdateLogPolling();
+    setUpdateFlowState("detached");
+  } else {
+    isUpdateInProgress = false;
+  }
   closeVersionModal();
 }
 
@@ -7833,8 +8037,11 @@ async function runUpdateFromModal(buttonEl) {
     ref = channel === "dev" ? "refs/heads/dev" : "refs/heads/main";
   }
 
+  rememberUpdateAction(buttonEl);
+
   // Custom branch: verify the branch exists on GitHub before triggering
   if (channel === "custom") {
+    setUpdateFlowState("checking");
     const statusEl = document.getElementById("updateStatusText");
     if (statusEl) { statusEl.textContent = "Checking branch..."; statusEl.style.color = ""; }
     try {
@@ -7842,6 +8049,7 @@ async function runUpdateFromModal(buttonEl) {
       const r = await fetch(checkUrl, { method: "HEAD" });
       if (!r.ok) {
         if (statusEl) { statusEl.textContent = "Branch \"" + latest + "\" not found on GitHub."; statusEl.style.color = "#ff8a8a"; }
+        setUpdateFlowState("failed");
         return;
       }
     } catch (e) {
@@ -7856,10 +8064,12 @@ async function runUpdateFromModal(buttonEl) {
     : `MerVLAN update to ${ref || "selected release"}`;
   const desc = descBase + (logPolicy === "clear" ? " (clear existing logs first)" : " (keep existing logs)");
 
-  isUpdateInProgress = true;
-  startUpdateSpinner();
-  await startUpdateLogPolling();
-  disableBtnTemporarily(buttonEl, 10000);
+  if (updateFlowState !== "detached") {
+    setUpdateFlowState("running");
+    startUpdateSpinner();
+    await startUpdateLogPolling();
+    if (updateFlowState === "detached") stopUpdateLogPolling();
+  }
   appendCliText(`\n[${new Date().toLocaleString()}] Queued action: ${desc}\n`, { scroll: 'force' });
 
   const parentWin = window.parent;
@@ -7869,15 +8079,15 @@ async function runUpdateFromModal(buttonEl) {
     // submit. Only an explicit false is a rejection.
     if (submitted === false) {
       appendCliText(`[${new Date().toLocaleString()}] Parent rejected or deduplicated ${desc}.\n`, { scroll: 'force' });
-      isUpdateInProgress = false;
       stopUpdateSpinner("Error");
+      setUpdateFlowState("failed");
       stopUpdateLogPolling();
       return;
     }
   } else {
     appendCliText(`[${new Date().toLocaleString()}] Parent handler not available for update.\n`, { scroll: 'force' });
-    isUpdateInProgress = false;
     stopUpdateSpinner("Error");
+    setUpdateFlowState("failed");
     stopUpdateLogPolling();
     return;
   }
